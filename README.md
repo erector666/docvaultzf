@@ -1,26 +1,27 @@
-# AppVault - AI-Powered Document Management Platform
+# DocVault - Document Management System
 
-AppVault is an intelligent document management web application that provides AI-powered document processing, classification, and organization capabilities.
+DocVault is a modern document management web application built with React and Firebase. It provides secure document storage, organization, and retrieval capabilities for personal and professional use.
 
 ## Features
 
-- **AI-Powered Processing**: Automatic document classification, language detection, and content extraction
-- **Intelligent Organization**: Smart categorization and tagging without manual intervention
-- **Advanced Search**: Content-based search with AI-enhanced results
-- **Multi-language Support**: Support for English, Macedonian, and French
-- **Real-time Processing**: Live document analysis with progress tracking
-- **Mobile-First Design**: Responsive interface optimized for all devices
-- **Theme System**: Light and dark theme support with system detection
-- **Authentication**: Secure user authentication with Firebase Auth
+- **Document Storage**: Secure file upload and storage with Firebase Storage
+- **Document Organization**: Categorize and tag documents for easy management
+- **Search Functionality**: Find documents by name, tags, or category
+- **User Authentication**: Secure login and registration with Firebase Auth
+- **Responsive Design**: Mobile-first interface that works on all devices
+- **Theme Support**: Light and dark theme options
+- **Multi-language UI**: Support for English, Macedonian, and French interface
+- **Document Management**: Upload, view, and delete documents
+- **User Profiles**: Manage user settings and preferences
 
 ## Tech Stack
 
 ### Frontend
-- **React 18.2.0** with TypeScript
-- **React Router v7.8.2** for routing
-- **TanStack Query 3.39.3** for state management
-- **Tailwind CSS 3.2.4** for styling
-- **Framer Motion 9.0.1** for animations
+- **React 19.1.1** with TypeScript
+- **React Router v7.9.2** for routing
+- **TanStack Query 5.90.2** for state management
+- **Tailwind CSS 3.4.0** for styling
+- **Framer Motion 12.23.22** for animations
 - **Lucide React** for icons
 
 ### Backend
@@ -28,11 +29,6 @@ AppVault is an intelligent document management web application that provides AI-
 - **Firebase Firestore** for database
 - **Firebase Storage** for file storage
 - **Firebase Functions** for serverless functions
-
-### AI/ML Services
-- **Tesseract.js 5.0.4** for OCR
-- **Hugging Face API** for language detection and classification
-- **DeepSeek API** for enhanced processing
 
 ## Getting Started
 
@@ -46,8 +42,8 @@ AppVault is an intelligent document management web application that provides AI-
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd appvault
+git clone https://github.com/erector666/docvaultzf.git
+cd dv3
 ```
 
 2. Install dependencies:
@@ -115,8 +111,6 @@ src/
 | `REACT_APP_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
 | `REACT_APP_FIREBASE_APP_ID` | Firebase app ID |
 | `REACT_APP_FIREBASE_MEASUREMENT_ID` | Firebase measurement ID |
-| `REACT_APP_DEEPSEEK_API_KEY` | DeepSeek API key for enhanced processing |
-| `REACT_APP_HUGGINGFACE_API_KEY` | Hugging Face API key |
 
 ## Features Overview
 
@@ -130,19 +124,17 @@ src/
 - Drag-and-drop file upload
 - Support for multiple file formats (PDF, DOCX, images, TXT)
 - Real-time upload progress tracking
-- Batch upload capabilities
-
-### AI Processing
-- Automatic text extraction using OCR
-- Language detection with confidence scoring
-- Document classification into categories
-- Entity extraction and content summarization
+- Document categorization and tagging
+- File size validation (50MB limit)
+- Document search by name, tags, or category
 
 ### User Interface
 - Responsive design for all devices
 - Light and dark theme support
-- Multi-language support (EN, MK, FR)
+- Multi-language UI support (EN, MK, FR)
 - Modern, accessible UI components
+- Dashboard with document statistics
+- Analytics page for usage insights
 
 ## Contributing
 
