@@ -2,6 +2,10 @@
   "mcpServers": {
     "vercel": {
       "url": "https://mcp.vercel.com"
+    },
+    "sequentialthinking": {
+      "command": "node",
+      "args": ["C:\\Users\\kango\\Desktop\\dv3\\servers\\src\\sequentialthinking\\dist\\index.js"]
     }
   }
 }

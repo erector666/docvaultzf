@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableNetwork } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 
@@ -40,6 +40,12 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Configure Firestore to prevent connection issues
+// Force online mode to prevent "client is offline" errors
+enableNetwork(db).catch((error) => {
+  console.warn('Could not enable Firestore network:', error);
+});
 
 // Initialize Storage with error handling
 let storage: any = null;
