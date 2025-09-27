@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showSuccess as showNotificationSuccess, showError, showInfo } from '../utils/notification';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { Theme, SupportedLanguage } from '../types';
@@ -28,15 +29,29 @@ export const SettingsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('preferences');
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [preferences, setPreferences] = useState({
     language: language,
     theme: theme,
     notifications: user?.preferences?.notifications ?? true,
     autoCategorization: user?.preferences?.autoCategorization ?? true,
-    emailUpdates: true,
-    securityAlerts: true,
+    emailUpdates: user?.preferences?.emailUpdates ?? true,
+    securityAlerts: user?.preferences?.securityAlerts ?? true,
   });
+
+  // Update preferences when user data changes
+  useEffect(() => {
+    if (user?.preferences) {
+      setPreferences({
+        language: language,
+        theme: theme,
+        notifications: user.preferences.notifications,
+        autoCategorization: user.preferences.autoCategorization,
+        emailUpdates: user.preferences.emailUpdates ?? true,
+        securityAlerts: user.preferences.securityAlerts ?? true,
+      });
+    }
+  }, [user, language, theme]);
 
   const tabs = [
     { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
@@ -65,7 +80,8 @@ export const SettingsPage: React.FC = () => {
 
       // Save to user profile
       await updateUserProfile({ preferences });
-      showSuccessMessage();
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
     } catch (error) {
       console.error('Error updating preferences:', error);
     } finally {
@@ -74,10 +90,6 @@ export const SettingsPage: React.FC = () => {
   };
 
 
-  const showSuccessMessage = () => {
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
-  };
 
   const handleExportData = async () => {
     setIsLoading(true);
@@ -126,7 +138,14 @@ export const SettingsPage: React.FC = () => {
       // Create and download JSON file
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
+      
+      let url: string;
+      try {
+        url = URL.createObjectURL(dataBlob);
+      } catch (error) {
+        console.error('Failed to create blob URL for export:', error);
+        throw new Error('Failed to create download file');
+      }
 
       const link = document.createElement('a');
       link.href = url;
@@ -137,13 +156,17 @@ export const SettingsPage: React.FC = () => {
 
       // Clean up the blob URL after a short delay to ensure download starts
       setTimeout(() => {
-        URL.revokeObjectURL(url);
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn('Failed to revoke blob URL:', error);
+        }
       }, 100);
 
-      alert('Data exported successfully!');
+      showNotificationSuccess('Export Complete', 'Data exported successfully!');
     } catch (error) {
       console.error('Error exporting data:', error);
-      alert('Failed to export data. Please try again.');
+      showError('Export Failed', 'Failed to export data. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -190,7 +213,7 @@ export const SettingsPage: React.FC = () => {
       // Delete the user account
       await deleteUser(auth.currentUser);
 
-      alert(
+      showError('Account Deletion Failed',
         'Account deleted successfully. You will be redirected to the login page.'
       );
 
@@ -201,11 +224,11 @@ export const SettingsPage: React.FC = () => {
 
       // Handle specific Firebase Auth errors
       if (error.code === 'auth/requires-recent-login') {
-        alert(
+        showError('Account Deletion Failed',
           'For security reasons, please log out and log back in before deleting your account.'
         );
       } else {
-        alert(`Failed to delete account: ${error.message}`);
+        showError('Account Deletion Failed',`Failed to delete account: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -227,7 +250,7 @@ export const SettingsPage: React.FC = () => {
       const multiFactorUser = multiFactor(auth.currentUser);
 
       if (multiFactorUser.enrolledFactors.length > 0) {
-        alert('Two-factor authentication is already enabled for your account.');
+        showError('Account Deletion Failed','Two-factor authentication is already enabled for your account.');
         return;
       }
 
@@ -237,7 +260,7 @@ export const SettingsPage: React.FC = () => {
       // 2. Allow SMS phone number setup
       // 3. Handle the enrollment process
 
-      alert(`Two-Factor Authentication Setup:
+      showError('Account Deletion Failed',`Two-Factor Authentication Setup:
 
 1. Download an authenticator app (Google Authenticator, Authy, etc.)
 2. Scan the QR code that would be generated here
@@ -250,7 +273,7 @@ Current status: 2FA is not yet configured for your account.`);
       console.log('2FA setup requested - placeholder implementation');
     } catch (error) {
       console.error('Error setting up 2FA:', error);
-      alert('Failed to setup 2FA. Please try again.');
+      showError('Account Deletion Failed','Failed to setup 2FA. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -306,7 +329,7 @@ Current status: 2FA is not yet configured for your account.`);
 
           {/* Success Message */}
           <AnimatePresence>
-            {showSuccess && (
+            {showSuccessMessage && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -537,6 +560,46 @@ Current status: 2FA is not yet configured for your account.`);
                               <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
                                   preferences.securityAlerts
+                                    ? 'translate-x-6'
+                                    : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Auto-Categorization */}
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                          Document Processing
+                        </label>
+                        <div className='space-y-4'>
+                          <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                            <div>
+                              <h4 className='font-medium text-gray-900 dark:text-white'>
+                                Auto-Categorization
+                              </h4>
+                              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                                Automatically categorize uploaded documents
+                              </p>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setPreferences({
+                                  ...preferences,
+                                  autoCategorization: !preferences.autoCategorization,
+                                })
+                              }
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                                preferences.autoCategorization
+                                  ? 'bg-primary-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                                  preferences.autoCategorization
                                     ? 'translate-x-6'
                                     : 'translate-x-1'
                                 }`}

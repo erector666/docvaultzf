@@ -17,7 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { LoginForm } from '../types';
-import { validateEmail, validatePassword, sanitizeInput } from '../utils/validation';
+import {
+  validateEmail,
+  validatePassword,
+  sanitizeInput,
+} from '../utils/validation';
 
 export const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginForm>({
@@ -107,7 +111,7 @@ export const LoginPage: React.FC = () => {
         email: sanitizeInput(formData.email),
         password: formData.password, // Don't sanitize password
       };
-      
+
       await login(sanitizedData);
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -209,9 +213,9 @@ export const LoginPage: React.FC = () => {
             </h2>
 
             <p className='text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed'>
-              Streamline your document management with powerful tools.
-              Organize, search, and process your documents more efficiently with
-              smart categorization and analysis.
+              Streamline your document management with powerful tools. Organize,
+              search, and process your documents more efficiently with smart
+              categorization and analysis.
             </p>
 
             {/* Feature Showcase */}

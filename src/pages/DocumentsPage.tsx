@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showError } from '../utils/notification';
 import { documentService, Document } from '../services/documentService';
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   FileVideo,
   Archive,
   Plus,
+  X,
 } from 'lucide-react';
 
 export const DocumentsPage: React.FC = () => {
@@ -31,43 +33,9 @@ export const DocumentsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const [error, setError] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
 
-  // Mock documents data
-  const mockDocuments: Document[] = [
-    {
-      id: '1',
-      name: 'Project Proposal 2024.pdf',
-      type: 'pdf',
-      size: 2048576,
-      uploadDate: new Date('2024-01-15'),
-      category: 'Business',
-      tags: ['proposal', 'project', '2024'],
-      isStarred: true,
-      userId: 'mock-user',
-    },
-    {
-      id: '2',
-      name: 'Meeting Notes.docx',
-      type: 'docx',
-      size: 1024000,
-      uploadDate: new Date('2024-01-14'),
-      category: 'Business',
-      tags: ['meeting', 'notes'],
-      isStarred: false,
-      userId: 'mock-user',
-    },
-    {
-      id: '3',
-      name: 'Financial Report.xlsx',
-      type: 'xlsx',
-      size: 1536000,
-      uploadDate: new Date('2024-01-13'),
-      category: 'Finance',
-      tags: ['financial', 'report'],
-      isStarred: true,
-      userId: 'mock-user',
-    },
-  ];
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -85,8 +53,6 @@ export const DocumentsPage: React.FC = () => {
       } catch (err) {
         console.error('Error loading documents:', err);
         setError('Failed to load documents');
-        // Fallback to mock data for demo
-        setDocuments(mockDocuments);
       } finally {
         setIsLoading(false);
       }
@@ -172,24 +138,40 @@ export const DocumentsPage: React.FC = () => {
 
   const handleViewDocument = (doc: Document) => {
     if (doc.downloadURL) {
-      // Open document in new tab
-      window.open(doc.downloadURL, '_blank');
+      try {
+        setSelectedDocument(doc);
+        setShowDocumentViewer(true);
+      } catch (error) {
+        console.error('Failed to open document viewer:', error);
+        showError('Document Error', 'Failed to open document. Please try again.');
+      }
     } else {
-      alert('Document URL not available');
+      showError('Document Error', 'Document URL not available');
     }
+  };
+
+  const closeDocumentViewer = () => {
+    setShowDocumentViewer(false);
+    setSelectedDocument(null);
   };
 
   const handleDownloadDocument = (doc: Document) => {
     if (doc.downloadURL) {
-      // Create a temporary link to download the document
-      const link = document.createElement('a');
-      link.href = doc.downloadURL;
-      link.download = doc.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        // Create a temporary link to download the document
+        const link = document.createElement('a');
+        link.href = doc.downloadURL;
+        link.download = doc.name;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error('Failed to download document:', error);
+        showError('Download Error', 'Failed to download document. Please try again.');
+      }
     } else {
-      alert('Document URL not available');
+      showError('Document Error', 'Document URL not available');
     }
   };
 
@@ -584,6 +566,158 @@ export const DocumentsPage: React.FC = () => {
           )}
         </motion.div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {showDocumentViewer && selectedDocument && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                  {(() => {
+                    const Icon = getFileIcon(selectedDocument.type);
+                    return <Icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />;
+                  })()}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {selectedDocument.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {selectedDocument.category} • {formatFileSize(selectedDocument.size)} • {selectedDocument.uploadDate.toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleDownloadDocument(selectedDocument)}
+                  className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors duration-200"
+                  title="Download"
+                >
+                  <Download className="w-5 h-5" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={closeDocumentViewer}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors duration-200"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 p-6 overflow-auto">
+              {selectedDocument.downloadURL ? (
+                <div className="w-full h-full">
+                  {/* PDF Viewer */}
+                  {selectedDocument.type === 'pdf' ? (
+                    <iframe
+                      src={selectedDocument.downloadURL}
+                      className="w-full h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700"
+                      title={selectedDocument.name}
+                    />
+                  ) : 
+                  /* Image Viewer */
+                  selectedDocument.type === 'image' ? (
+                    <div className="flex justify-center">
+                      <img
+                        src={selectedDocument.downloadURL}
+                        alt={selectedDocument.name}
+                        className="max-w-full max-h-[60vh] rounded-lg shadow-lg"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `
+                              <div class="flex flex-col items-center justify-center h-[60vh] text-center p-8">
+                                <FileText class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Preview not available</h4>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">This file type cannot be previewed in the browser.</p>
+                                <button onclick="window.open('${selectedDocument.downloadURL}', '_blank')" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                                  Open in New Tab
+                                </button>
+                              </div>
+                            `;
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : 
+                  /* Text Viewer */
+                  ['txt', 'md', 'csv', 'json', 'xml'].includes(selectedDocument.type) ? (
+                    <iframe
+                      src={selectedDocument.downloadURL}
+                      className="w-full h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700"
+                      title={selectedDocument.name}
+                    />
+                  ) : 
+                  /* Unsupported file types */
+                  (
+                    <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8">
+                      <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+                        {(() => {
+                          const Icon = getFileIcon(selectedDocument.type);
+                          return <Icon className="w-12 h-12 text-gray-400" />;
+                        })()}
+                      </div>
+                      <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        Preview not available
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+                        This file type cannot be previewed in the browser. You can download it to view with an appropriate application.
+                      </p>
+                      <div className="flex space-x-3">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => window.open(selectedDocument.downloadURL, '_blank')}
+                          className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Open in New Tab</span>
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleDownloadDocument(selectedDocument)}
+                          className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 flex items-center space-x-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download</span>
+                        </motion.button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8">
+                  <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+                    <FileText className="w-12 h-12 text-red-500" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    Document not available
+                  </h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    The document URL is not available. Please try uploading the document again.
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

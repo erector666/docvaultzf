@@ -1,60 +1,59 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableNetwork } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, CACHE_SIZE_UNLIMITED, Firestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { validateEnvironment, getSanitizedConfig } from '../utils/envValidation';
 
-// Firebase environment variables are now configured in .env file
+// Validate environment variables before initializing Firebase
+const envValidation = validateEnvironment();
+if (!envValidation.isValid) {
+  throw new Error(`Firebase configuration error: ${envValidation.errors.join(', ')}`);
+}
 
-// Clean environment variables to remove any hidden characters
-const cleanProjectId =
-  process.env.REACT_APP_FIREBASE_PROJECT_ID?.trim().replace(/[\r\n]/g, '');
-const cleanApiKey = process.env.REACT_APP_FIREBASE_API_KEY?.trim().replace(
-  /[\r\n]/g,
-  ''
-);
-const cleanAuthDomain =
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN?.trim().replace(/[\r\n]/g, '');
-const cleanStorageBucket =
-  process.env.REACT_APP_FIREBASE_STORAGE_BUCKET?.trim().replace(/[\r\n]/g, '');
-const cleanMessagingSenderId =
-  process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID?.trim().replace(
-    /[\r\n]/g,
-    ''
-  );
-const cleanAppId = process.env.REACT_APP_FIREBASE_APP_ID?.trim().replace(
-  /[\r\n]/g,
-  ''
-);
+// Get sanitized environment configuration
+const config = getSanitizedConfig();
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: cleanApiKey,
-  authDomain: cleanAuthDomain,
-  projectId: cleanProjectId,
-  storageBucket: cleanStorageBucket,
-  messagingSenderId: cleanMessagingSenderId,
-  appId: cleanAppId,
+// Additional aggressive sanitization for Firebase config
+const sanitizeFirebaseValue = (value: string | undefined): string | undefined => {
+  if (!value) return value;
+  // Remove all control characters, whitespace, and normalize the string
+  return value.trim().replace(/[\r\n\t\f\v\0]/g, '').replace(/\s+/g, '');
 };
 
-// Verify Firebase configuration
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  throw new Error('Firebase configuration is incomplete. Please check your .env file.');
-}
+// Manual cleaning for project ID specifically
+const projectId = process.env.REACT_APP_FIREBASE_PROJECT_ID?.trim().replace(/[\r\n]/g, '') || '';
+
+// Firebase configuration using validated environment variables
+const firebaseConfig = {
+  apiKey: sanitizeFirebaseValue(config.REACT_APP_FIREBASE_API_KEY),
+  authDomain: sanitizeFirebaseValue(config.REACT_APP_FIREBASE_AUTH_DOMAIN),
+  projectId: projectId, // Use manually cleaned project ID
+  storageBucket: sanitizeFirebaseValue(config.REACT_APP_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: sanitizeFirebaseValue(config.REACT_APP_FIREBASE_MESSAGING_SENDER_ID),
+  appId: sanitizeFirebaseValue(config.REACT_APP_FIREBASE_APP_ID),
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
+// Initialize Firestore with optimized settings to prevent connection issues
+let db: Firestore;
+try {
+  db = initializeFirestore(app, {
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+    ignoreUndefinedProperties: true,
+  });
+} catch (error) {
+  // If initializeFirestore fails, fall back to getFirestore
+  console.warn('Failed to initialize Firestore with custom settings, using default:', error);
+  db = getFirestore(app);
+}
 
-// Configure Firestore to prevent connection issues
-// Force online mode to prevent "client is offline" errors
-enableNetwork(db).catch(error => {
-  console.warn('Could not enable Firestore network:', error);
-});
+export { db };
 
 // Initialize Storage with error handling
 let storage: any = null;

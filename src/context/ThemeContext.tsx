@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { Theme } from '../types';
 import { STORAGE_KEYS } from '../constants';
+import { setUserPreference, getUserPreference } from '../utils/secureStorage';
 
 interface ThemeContextType {
   theme: Theme;
@@ -30,7 +31,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem(STORAGE_KEYS.theme) as Theme;
+    const savedTheme = getUserPreference('theme') as Theme;
     return savedTheme || 'system';
   });
 
@@ -74,7 +75,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const setTheme = (newTheme: Theme) => {
     console.log('Setting theme to:', newTheme);
     setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEYS.theme, newTheme);
+    setUserPreference('theme', newTheme);
   };
 
   const value: ThemeContextType = {

@@ -18,53 +18,60 @@ export class ErrorHandler {
       'auth/user-not-found': {
         code: 'auth/user-not-found',
         message: 'No user found with this email address',
-        userMessage: 'No account found with this email address. Please check your email or create a new account.',
-        severity: 'medium'
+        userMessage:
+          'No account found with this email address. Please check your email or create a new account.',
+        severity: 'medium',
       },
       'auth/wrong-password': {
         code: 'auth/wrong-password',
         message: 'Incorrect password',
         userMessage: 'The password you entered is incorrect. Please try again.',
-        severity: 'medium'
+        severity: 'medium',
       },
       'auth/email-already-in-use': {
         code: 'auth/email-already-in-use',
         message: 'Email address is already in use',
-        userMessage: 'An account with this email address already exists. Please use a different email or try logging in.',
-        severity: 'medium'
+        userMessage:
+          'An account with this email address already exists. Please use a different email or try logging in.',
+        severity: 'medium',
       },
       'auth/weak-password': {
         code: 'auth/weak-password',
         message: 'Password is too weak',
-        userMessage: 'Please choose a stronger password with at least 6 characters.',
-        severity: 'low'
+        userMessage:
+          'Please choose a stronger password with at least 6 characters.',
+        severity: 'low',
       },
       'auth/requires-recent-login': {
         code: 'auth/requires-recent-login',
         message: 'Recent login required',
-        userMessage: 'For security reasons, please log out and log back in before performing this action.',
-        severity: 'medium'
+        userMessage:
+          'For security reasons, please log out and log back in before performing this action.',
+        severity: 'medium',
       },
       'auth/too-many-requests': {
         code: 'auth/too-many-requests',
         message: 'Too many failed attempts',
         userMessage: 'Too many failed attempts. Please try again later.',
-        severity: 'high'
+        severity: 'high',
       },
       'auth/network-request-failed': {
         code: 'auth/network-request-failed',
         message: 'Network error',
-        userMessage: 'Network connection error. Please check your internet connection and try again.',
-        severity: 'high'
-      }
+        userMessage:
+          'Network connection error. Please check your internet connection and try again.',
+        severity: 'high',
+      },
     };
 
-    return authErrorMap[error.code] || {
-      code: error.code || 'unknown',
-      message: error.message || 'An unknown error occurred',
-      userMessage: 'An unexpected error occurred. Please try again.',
-      severity: 'medium'
-    };
+    return (
+      authErrorMap[error.code] || {
+        code: error.code || 'unknown',
+        message: error.message || 'An unknown error occurred',
+        userMessage: 'An unexpected error occurred. Please try again.',
+        severity: 'medium',
+      }
+    );
   }
 
   /**
@@ -76,40 +83,43 @@ export class ErrorHandler {
         code: 'permission-denied',
         message: 'Permission denied',
         userMessage: 'You do not have permission to perform this action.',
-        severity: 'high'
+        severity: 'high',
       },
-      'unavailable': {
+      unavailable: {
         code: 'unavailable',
         message: 'Service unavailable',
         userMessage: 'Service temporarily unavailable. Please try again later.',
-        severity: 'high'
+        severity: 'high',
       },
-      'unauthenticated': {
+      unauthenticated: {
         code: 'unauthenticated',
         message: 'User not authenticated',
         userMessage: 'Please log in to continue.',
-        severity: 'medium'
+        severity: 'medium',
       },
       'quota-exceeded': {
         code: 'quota-exceeded',
         message: 'Quota exceeded',
-        userMessage: 'Storage quota exceeded. Please contact support or upgrade your plan.',
-        severity: 'high'
+        userMessage:
+          'Storage quota exceeded. Please contact support or upgrade your plan.',
+        severity: 'high',
       },
       'not-found': {
         code: 'not-found',
         message: 'Document not found',
         userMessage: 'The requested document could not be found.',
-        severity: 'medium'
-      }
+        severity: 'medium',
+      },
     };
 
-    return firestoreErrorMap[error.code] || {
-      code: error.code || 'unknown',
-      message: error.message || 'An unknown error occurred',
-      userMessage: 'An unexpected error occurred. Please try again.',
-      severity: 'medium'
-    };
+    return (
+      firestoreErrorMap[error.code] || {
+        code: error.code || 'unknown',
+        message: error.message || 'An unknown error occurred',
+        userMessage: 'An unexpected error occurred. Please try again.',
+        severity: 'medium',
+      }
+    );
   }
 
   /**
@@ -121,34 +131,37 @@ export class ErrorHandler {
         code: 'storage/unauthorized',
         message: 'Unauthorized access',
         userMessage: 'You do not have permission to access this file.',
-        severity: 'high'
+        severity: 'high',
       },
       'storage/object-not-found': {
         code: 'storage/object-not-found',
         message: 'File not found',
         userMessage: 'The requested file could not be found.',
-        severity: 'medium'
+        severity: 'medium',
       },
       'storage/quota-exceeded': {
         code: 'storage/quota-exceeded',
         message: 'Storage quota exceeded',
-        userMessage: 'Storage quota exceeded. Please delete some files or upgrade your plan.',
-        severity: 'high'
+        userMessage:
+          'Storage quota exceeded. Please delete some files or upgrade your plan.',
+        severity: 'high',
       },
       'storage/canceled': {
         code: 'storage/canceled',
         message: 'Upload canceled',
         userMessage: 'File upload was canceled.',
-        severity: 'low'
-      }
+        severity: 'low',
+      },
     };
 
-    return storageErrorMap[error.code] || {
-      code: error.code || 'unknown',
-      message: error.message || 'An unknown error occurred',
-      userMessage: 'An unexpected error occurred. Please try again.',
-      severity: 'medium'
-    };
+    return (
+      storageErrorMap[error.code] || {
+        code: error.code || 'unknown',
+        message: error.message || 'An unknown error occurred',
+        userMessage: 'An unexpected error occurred. Please try again.',
+        severity: 'medium',
+      }
+    );
   }
 
   /**
@@ -159,8 +172,9 @@ export class ErrorHandler {
       return {
         code: 'network-error',
         message: 'Network connection failed',
-        userMessage: 'Network connection error. Please check your internet connection and try again.',
-        severity: 'high'
+        userMessage:
+          'Network connection error. Please check your internet connection and try again.',
+        severity: 'high',
       };
     }
 
@@ -169,7 +183,7 @@ export class ErrorHandler {
         code: 'timeout-error',
         message: 'Request timeout',
         userMessage: 'The request took too long to complete. Please try again.',
-        severity: 'medium'
+        severity: 'medium',
       };
     }
 
@@ -177,7 +191,7 @@ export class ErrorHandler {
       code: 'unknown-error',
       message: error.message || 'An unknown error occurred',
       userMessage: 'An unexpected error occurred. Please try again.',
-      severity: 'medium'
+      severity: 'medium',
     };
   }
 
@@ -193,11 +207,13 @@ export class ErrorHandler {
     }
 
     // Firestore errors
-    if (error.code?.startsWith('permission-denied') || 
-        error.code?.startsWith('unavailable') ||
-        error.code?.startsWith('unauthenticated') ||
-        error.code?.startsWith('quota-exceeded') ||
-        error.code?.startsWith('not-found')) {
+    if (
+      error.code?.startsWith('permission-denied') ||
+      error.code?.startsWith('unavailable') ||
+      error.code?.startsWith('unauthenticated') ||
+      error.code?.startsWith('quota-exceeded') ||
+      error.code?.startsWith('not-found')
+    ) {
       return this.handleFirestoreError(error);
     }
 
@@ -207,10 +223,12 @@ export class ErrorHandler {
     }
 
     // Network errors
-    if (error.name === 'NetworkError' || 
-        error.name === 'TimeoutError' ||
-        error.message?.includes('network') ||
-        error.message?.includes('timeout')) {
+    if (
+      error.name === 'NetworkError' ||
+      error.name === 'TimeoutError' ||
+      error.message?.includes('network') ||
+      error.message?.includes('timeout')
+    ) {
       return this.handleNetworkError(error);
     }
 
@@ -219,7 +237,7 @@ export class ErrorHandler {
       code: 'unknown',
       message: error.message || 'An unknown error occurred',
       userMessage: 'An unexpected error occurred. Please try again.',
-      severity: 'medium'
+      severity: 'medium',
     };
   }
 
@@ -228,7 +246,8 @@ export class ErrorHandler {
    */
   static showError(error: AppError): void {
     // For now, use alert. In a real app, you might use a toast notification system
-    alert(`Error: ${error.userMessage}`);
+    // Use secure notification system instead of alert
+    console.error(`Error: ${error.userMessage}`);
   }
 
   /**
@@ -240,7 +259,7 @@ export class ErrorHandler {
       message: error.message,
       userMessage: error.userMessage,
       severity: error.severity,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

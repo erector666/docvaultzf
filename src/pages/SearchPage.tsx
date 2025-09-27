@@ -27,7 +27,8 @@ import {
   SortAsc,
   SortDesc,
 } from 'lucide-react';
-// Removed unused context imports
+import { useAuth } from '../context/AuthContext';
+import { documentService } from '../services/documentService';
 import { Document, SearchFilters } from '../types';
 
 interface SearchResult extends Document {
@@ -37,7 +38,7 @@ interface SearchResult extends Document {
 }
 
 export const SearchPage: React.FC = () => {
-  // Removed unused context hooks
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,99 +62,6 @@ export const SearchPage: React.FC = () => {
     minConfidence: 0,
   });
 
-  // Mock search results for demonstration
-  const mockDocuments: SearchResult[] = [
-    {
-      id: '1',
-      name: 'Project Proposal 2024.pdf',
-      url: '/documents/project-proposal-2024.pdf',
-      type: 'application/pdf',
-      size: 2048576,
-      uploadedAt: new Date('2024-01-15'),
-      category: 'Business',
-      tags: ['proposal', '2024', 'project', 'business'],
-      language: 'en',
-      confidence: 0.95,
-      summary:
-        'Comprehensive project proposal for Q1 2024 initiatives including budget allocation and timeline.',
-      extractedText:
-        'This document outlines our strategic initiatives for the first quarter of 2024...',
-      processingStatus: 'completed',
-      aiModel: 'GPT-4',
-      processingTime: 2.3,
-      qualityScore: 0.92,
-      viewCount: 15,
-      lastAccessed: new Date('2024-01-20'),
-      isEncrypted: false,
-      privacyLevel: 'private',
-      collaborators: ['user1@example.com'],
-      version: 1,
-      relevanceScore: 0.95,
-      matchedTerms: ['project', 'proposal', '2024'],
-      snippet:
-        'This document outlines our strategic initiatives for the first quarter of 2024, including detailed budget allocation and project timeline...',
-    },
-    {
-      id: '2',
-      name: 'Meeting Notes - Team Sync.docx',
-      url: '/documents/meeting-notes-team-sync.docx',
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      size: 512000,
-      uploadedAt: new Date('2024-01-18'),
-      category: 'Meeting Notes',
-      tags: ['meeting', 'team', 'sync', 'notes'],
-      language: 'en',
-      confidence: 0.88,
-      summary:
-        'Weekly team synchronization meeting notes covering project updates and action items.',
-      extractedText:
-        'Team sync meeting held on January 18th, 2024. Key discussion points...',
-      processingStatus: 'completed',
-      aiModel: 'GPT-4',
-      processingTime: 1.8,
-      qualityScore: 0.85,
-      viewCount: 8,
-      lastAccessed: new Date('2024-01-19'),
-      isEncrypted: false,
-      privacyLevel: 'private',
-      collaborators: ['user2@example.com', 'user3@example.com'],
-      version: 1,
-      relevanceScore: 0.78,
-      matchedTerms: ['meeting', 'team', 'sync'],
-      snippet:
-        'Weekly team synchronization meeting notes covering project updates, action items, and key decisions made during the session...',
-    },
-    {
-      id: '3',
-      name: 'Financial Report Q4 2023.xlsx',
-      url: '/documents/financial-report-q4-2023.xlsx',
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      size: 1536000,
-      uploadedAt: new Date('2024-01-10'),
-      category: 'Finance',
-      tags: ['financial', 'report', 'Q4', '2023', 'excel'],
-      language: 'en',
-      confidence: 0.92,
-      summary:
-        'Comprehensive financial report for Q4 2023 including revenue, expenses, and profit analysis.',
-      extractedText:
-        'Q4 2023 Financial Report. Total revenue: $2.5M, Expenses: $1.8M...',
-      processingStatus: 'completed',
-      aiModel: 'GPT-4',
-      processingTime: 3.2,
-      qualityScore: 0.94,
-      viewCount: 23,
-      lastAccessed: new Date('2024-01-22'),
-      isEncrypted: true,
-      privacyLevel: 'restricted',
-      collaborators: ['finance@example.com'],
-      version: 2,
-      relevanceScore: 0.65,
-      matchedTerms: ['financial', 'report'],
-      snippet:
-        'Comprehensive financial report for Q4 2023 including detailed revenue analysis, expense breakdown, and profit margin calculations...',
-    },
-  ];
 
   const categories = [
     'All',
@@ -220,30 +128,46 @@ export const SearchPage: React.FC = () => {
 
     setIsSearching(true);
 
-    // Simulate AI-powered search
-    setTimeout(() => {
-      const filteredResults = mockDocuments.filter(doc => {
-        const query = searchQuery.toLowerCase();
-        const matchesQuery =
-          doc.name.toLowerCase().includes(query) ||
-          doc.summary?.toLowerCase().includes(query) ||
-          doc.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-          doc.extractedText?.toLowerCase().includes(query);
+    try {
+      // Use real search functionality from documentService
+      const documents = await documentService.searchDocuments(user?.uid || '', searchQuery);
+      
+      // Convert Document[] to SearchResult[] format
+      const searchResults: SearchResult[] = documents.map(doc => ({
+        ...doc,
+        url: doc.downloadURL || '',
+        type: doc.type,
+        uploadedAt: doc.uploadDate,
+        language: 'en', // Default language
+        confidence: 1.0, // Default confidence for real documents
+        summary: '', // No AI summary available yet
+        extractedText: '', // No extracted text available yet
+        processingStatus: 'completed',
+        aiModel: '',
+        processingTime: 0,
+        qualityScore: 1.0,
+        viewCount: 0,
+        lastAccessed: doc.uploadDate,
+        isEncrypted: false,
+        privacyLevel: 'private',
+        collaborators: [],
+        version: 1,
+        relevanceScore: 1.0,
+        matchedTerms: [searchQuery.toLowerCase()],
+        snippet: `Document: ${doc.name}`,
+      }));
 
+      // Apply filters
+      const filteredResults = searchResults.filter(doc => {
         const matchesFilters =
           (!filters.category ||
             filters.category === 'All' ||
             doc.category === filters.category) &&
           (!filters.fileType ||
             filters.fileType === 'All' ||
-            doc.type.includes(filters.fileType.toLowerCase())) &&
-          (!filters.language ||
-            filters.language === 'All' ||
-            doc.language === filters.language.toLowerCase()) &&
-          (!filters.minConfidence ||
-            (doc.confidence || 0) >= filters.minConfidence);
+            doc.type.includes(filters.fileType.toLowerCase()));
 
-        return matchesQuery && matchesFilters;
+        return matchesFilters;
       });
 
       // Sort results
@@ -267,9 +191,13 @@ export const SearchPage: React.FC = () => {
       });
 
       setSearchResults(sortedResults);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
       setIsSearching(false);
-    }, 1000);
-  }, [searchQuery, filters, sortBy, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }, [searchQuery, filters, sortBy, sortOrder, user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -300,9 +228,7 @@ export const SearchPage: React.FC = () => {
   };
 
   const handleBulkAction = (action: string) => {
-    console.log(
-      `Bulk action: ${action} on ${selectedResults.length} documents`
-    );
+    // Bulk action executed
     setSelectedResults([]);
   };
 

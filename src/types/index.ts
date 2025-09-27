@@ -44,6 +44,8 @@ export interface User {
     theme: 'light' | 'dark' | 'system';
     notifications: boolean;
     autoCategorization: boolean;
+    emailUpdates: boolean;
+    securityAlerts: boolean;
   };
   createdAt: Date;
   lastLoginAt: Date;

@@ -4,14 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Button } from '../ui/Button';
-import {
-  Sun,
-  Moon,
-  Globe,
-  LogOut,
-  User,
-  ChevronDown,
-} from 'lucide-react';
+import { Sun, Moon, Globe, LogOut, User, ChevronDown, Menu, X } from 'lucide-react';
 import { SupportedLanguage } from '../../types';
 
 export const Header: React.FC = () => {
@@ -20,6 +13,7 @@ export const Header: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const languages: Array<{
     code: SupportedLanguage;
@@ -104,8 +98,24 @@ export const Header: React.FC = () => {
             </Link>
           </nav>
 
+          {/* Mobile Menu Button */}
+          <div className='md:hidden'>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className='p-2'
+            >
+              {showMobileMenu ? (
+                <X className='h-5 w-5' />
+              ) : (
+                <Menu className='h-5 w-5' />
+              )}
+            </Button>
+          </div>
+
           {/* User Actions */}
-          <div className='flex items-center space-x-4'>
+          <div className='hidden md:flex items-center space-x-4'>
             {/* Theme Toggle */}
             <Button
               variant='ghost'
@@ -178,6 +188,18 @@ export const Header: React.FC = () => {
                         src={user.photoURL}
                         alt={user.displayName || user.email}
                         className='w-8 h-8 rounded-full object-cover'
+                        onError={(e) => {
+                          // If blob URL fails to load, revert to user icon
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-8 h-8 rounded-full flex items-center justify-center bg-primary-100 dark:bg-primary-900';
+                            fallback.innerHTML = '<svg class="h-5 w-5 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
+                            parent.appendChild(fallback);
+                          }
+                        }}
                       />
                     ) : (
                       <User className='h-5 w-5 text-primary-600 dark:text-primary-400' />
@@ -200,6 +222,58 @@ export const Header: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {showMobileMenu && (
+          <div className='md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'>
+            <div className='px-4 py-2 space-y-1'>
+              {/* Navigation Links */}
+              <Link
+                to='/dashboard'
+                className='block px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md text-sm font-medium transition-colors'
+                onClick={() => setShowMobileMenu(false)}
+              >
+                {t('dashboard.title')}
+              </Link>
+              <Link
+                to='/documents'
+                className='block px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md text-sm font-medium transition-colors'
+                onClick={() => setShowMobileMenu(false)}
+              >
+                {t('documents.title')}
+              </Link>
+
+              {/* User Actions for Mobile */}
+              {user && (
+                <div className='border-t border-gray-200 dark:border-gray-700 pt-2 mt-2'>
+                  {/* Profile Link */}
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setShowMobileMenu(false);
+                    }}
+                    className='flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md text-sm font-medium transition-colors'
+                  >
+                    <User className='h-4 w-4 mr-2' />
+                    Profile Management
+                  </button>
+
+                  {/* Logout */}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setShowMobileMenu(false);
+                    }}
+                    className='flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md text-sm font-medium transition-colors'
+                  >
+                    <LogOut className='h-4 w-4 mr-2' />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

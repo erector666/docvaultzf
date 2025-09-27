@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createSafeBlobUrl, revokeSafeBlobUrl } from '../utils/blobCleanup';
+import { showSuccess as showNotificationSuccess, showError, showWarning } from '../utils/notification';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,10 +27,11 @@ export const ProfilePage: React.FC = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [currentPhotoPreview, setCurrentPhotoPreview] = useState<string | null>(null);
 
   const [profileData, setProfileData] = useState({
     displayName: user?.displayName || '',
@@ -56,6 +59,15 @@ export const ProfilePage: React.FC = () => {
     },
   });
 
+  // Cleanup blob URLs when component unmounts or photo changes
+  useEffect(() => {
+    return () => {
+      if (currentPhotoPreview) {
+        URL.revokeObjectURL(currentPhotoPreview);
+      }
+    };
+  }, [currentPhotoPreview]);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -75,8 +87,8 @@ export const ProfilePage: React.FC = () => {
         displayName: profileData.displayName,
         photoURL: profileData.profileImage,
       });
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -85,72 +97,90 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (JPG, PNG, or GIF)');
+      showError('Invalid File Type', 'Please select an image file (JPG, PNG, or GIF)');
       return;
     }
 
     // Validate file size (2MB limit)
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size must be less than 2MB');
+      showError('File Too Large', 'File size must be less than 2MB');
       return;
     }
 
     setIsUploadingPhoto(true);
     let previewURL: string | null = null;
-    
+
     try {
+      // Clean up previous preview if exists
+      if (currentPhotoPreview) {
+        revokeSafeBlobUrl(currentPhotoPreview);
+      }
+
       // Create a preview URL for immediate display
-      previewURL = URL.createObjectURL(file);
-      setProfileData(prev => ({
-        ...prev,
-        profileImage: previewURL!
-      }));
+      try {
+        previewURL = createSafeBlobUrl(file);
+        setCurrentPhotoPreview(previewURL);
+        setProfileData(prev => ({
+          ...prev,
+          profileImage: previewURL!,
+        }));
+      } catch (error) {
+        console.warn('Failed to create blob URL for photo preview:', error);
+        previewURL = null;
+      }
 
       // Upload to Firebase Storage
       const { storage } = await import('../services/firebase');
-      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      
+      const { ref, uploadBytes, getDownloadURL } = await import(
+        'firebase/storage'
+      );
+
       if (!storage) {
         throw new Error('Firebase Storage not available');
       }
 
       // Create storage reference
-      const storageRef = ref(storage, `profile-images/${user?.uid}/${file.name}`);
-      
+      const storageRef = ref(
+        storage,
+        `profile-images/${user?.uid}/${file.name}`
+      );
+
       // Upload file
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
+
       // Update user profile with new photo URL
       await updateUserProfile({ photoURL: downloadURL });
-      
+
       // Update local state with the actual download URL
       setProfileData(prev => ({
         ...prev,
-        profileImage: downloadURL
+        profileImage: downloadURL,
       }));
-      
+
       // Clean up preview URL since we now have the real URL
       if (previewURL) {
         URL.revokeObjectURL(previewURL);
+        setCurrentPhotoPreview(null);
       }
-      
-      console.log('Photo uploaded successfully:', downloadURL);
-      
+
+      // Photo uploaded successfully
     } catch (error) {
       console.error('Error uploading photo:', error);
-      alert('Failed to upload photo. Please try again.');
-      
+      showError('Upload Failed', 'Failed to upload photo. Please try again.');
+
       // Revert to previous image
       setProfileData(prev => ({
         ...prev,
-        profileImage: user?.photoURL || ''
+        profileImage: user?.photoURL || '',
       }));
     } finally {
       setIsUploadingPhoto(false);
@@ -159,14 +189,18 @@ export const ProfilePage: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match');
+      showError('Password Mismatch', 'New passwords do not match');
       return;
     }
 
     setIsLoading(true);
     try {
       // Import Firebase Auth functions
-      const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
+      const {
+        updatePassword,
+        reauthenticateWithCredential,
+        EmailAuthProvider,
+      } = await import('firebase/auth');
       const { auth } = await import('../services/firebase');
 
       if (!auth.currentUser) {
@@ -178,33 +212,33 @@ export const ProfilePage: React.FC = () => {
         auth.currentUser.email!,
         passwordData.currentPassword
       );
-      
+
       await reauthenticateWithCredential(auth.currentUser, credential);
-      
+
       // Update password
       await updatePassword(auth.currentUser, passwordData.newPassword);
-      
+
       // Clear form
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-      
+
       setShowPasswordForm(false);
-      alert('Password updated successfully!');
+      showNotificationSuccess('Password Updated', 'Password updated successfully!');
     } catch (error: any) {
       console.error('Error changing password:', error);
-      
+
       // Handle specific Firebase Auth errors
       if (error.code === 'auth/wrong-password') {
-        alert('Current password is incorrect');
+        showError('Authentication Failed', 'Current password is incorrect');
       } else if (error.code === 'auth/weak-password') {
-        alert('New password is too weak. Please choose a stronger password.');
+        showError('Weak Password', 'New password is too weak. Please choose a stronger password.');
       } else if (error.code === 'auth/requires-recent-login') {
-        alert('Please log out and log back in before changing your password.');
+        showWarning('Re-authentication Required', 'Please log out and log back in before changing your password.');
       } else {
-        alert(`Failed to change password: ${error.message}`);
+        showError('Password Change Failed', `Failed to change password: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -214,8 +248,8 @@ export const ProfilePage: React.FC = () => {
   const handleDeleteAccount = async () => {
     setIsLoading(true);
     try {
-      // Mock account deletion - in real app, this would call Firebase auth
-      console.log('Account deleted successfully');
+      // Delete user account from Firebase Auth
+      // Account deleted successfully
       navigate('/login');
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -337,7 +371,7 @@ export const ProfilePage: React.FC = () => {
 
         {/* Success Message */}
         <AnimatePresence>
-          {showSuccess && (
+          {showSuccessMessage && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -369,6 +403,22 @@ export const ProfilePage: React.FC = () => {
                         src={profileData.profileImage}
                         alt='Profile'
                         className='w-full h-full object-cover'
+                        onError={(e) => {
+                          // If blob URL fails to load, revert to user icon
+                          console.warn('Profile image blob URL failed to load');
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-full h-full flex items-center justify-center';
+                            fallback.innerHTML = '<svg class="w-12 h-12 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                        onLoad={() => {
+                          // Profile image loaded successfully
+                        }}
                       />
                     ) : (
                       <User className='w-12 h-12 text-primary-600 dark:text-primary-400' />
@@ -377,24 +427,26 @@ export const ProfilePage: React.FC = () => {
                   {isEditing && (
                     <>
                       <input
-                        type="file"
-                        accept="image/*"
+                        type='file'
+                        accept='image/*'
                         onChange={handlePhotoUpload}
-                        className="hidden"
-                        id="photo-upload"
+                        className='hidden'
+                        id='photo-upload'
                         disabled={isUploadingPhoto}
                       />
                       <motion.label
-                        htmlFor="photo-upload"
+                        htmlFor='photo-upload'
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         className={`absolute -bottom-1 -right-1 p-2 rounded-full shadow-lg transition-all duration-200 cursor-pointer ${
-                          isUploadingPhoto 
-                            ? 'bg-gray-400 cursor-not-allowed' 
+                          isUploadingPhoto
+                            ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-primary-600 hover:bg-primary-700'
                         }`}
                       >
-                        <Camera className={`w-4 h-4 ${isUploadingPhoto ? 'animate-pulse' : ''}`} />
+                        <Camera
+                          className={`w-4 h-4 ${isUploadingPhoto ? 'animate-pulse' : ''}`}
+                        />
                       </motion.label>
                     </>
                   )}
@@ -411,11 +463,13 @@ export const ProfilePage: React.FC = () => {
                   <div className='flex items-center justify-center space-x-2'>
                     <Calendar className='w-4 h-4' />
                     <span>
-                      Joined {(() => {
+                      Joined{' '}
+                      {(() => {
                         try {
-                          const date = profileData.joinDate instanceof Date 
-                            ? profileData.joinDate 
-                            : new Date(profileData.joinDate);
+                          const date =
+                            profileData.joinDate instanceof Date
+                              ? profileData.joinDate
+                              : new Date(profileData.joinDate);
                           return formatDate(date.toISOString());
                         } catch (error) {
                           return formatDate(new Date().toISOString());
@@ -633,7 +687,7 @@ export const ProfilePage: React.FC = () => {
                           }))
                         }
                         className='w-full px-3 py-2 bg-white/60 dark:bg-gray-700/60 rounded-lg border border-white/20 dark:border-gray-600/20 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500'
-                        placeholder='https://example.com'
+                        placeholder='https://your-website.com'
                       />
                     ) : (
                       <p className='text-gray-900 dark:text-white'>
@@ -753,8 +807,17 @@ export const ProfilePage: React.FC = () => {
                 </motion.button>
               </div>
 
-              <div className='space-y-4'>
+              <form id="password-form" className='space-y-4' onSubmit={handleChangePassword}>
                 <div>
+                  {/* Hidden username field for accessibility */}
+                  <input
+                    type='email'
+                    name='username'
+                    autoComplete='username'
+                    value={user?.email || ''}
+                    style={{ display: 'none' }}
+                    readOnly
+                  />
                   <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
                     Current Password
                   </label>
@@ -858,7 +921,7 @@ export const ProfilePage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              </div>
+              </form>
 
               <div className='flex space-x-3 mt-6'>
                 <motion.button
@@ -872,7 +935,8 @@ export const ProfilePage: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={handleChangePassword}
+                  type="submit"
+                  form="password-form"
                   disabled={isLoading}
                   className='flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
                 >

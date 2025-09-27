@@ -1,6 +1,18 @@
 import { storage, db } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  deleteDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  enableNetwork,
+  disableNetwork,
+} from 'firebase/firestore';
 import { ErrorHandler } from '../utils/errorHandler';
 
 export interface Document {
@@ -42,8 +54,11 @@ class DocumentService {
       onProgress?.({ progress: 0, status: 'uploading' });
 
       // Create storage reference
-      const storageRef = ref(storage, `${this.STORAGE_PATH}/${userId}/${Date.now()}_${file.name}`);
-      
+      const storageRef = ref(
+        storage,
+        `${this.STORAGE_PATH}/${userId}/${Date.now()}_${file.name}`
+      );
+
       // Upload file
       const uploadTask = await uploadBytes(storageRef, file);
       onProgress?.({ progress: 50, status: 'uploading' });
@@ -65,60 +80,82 @@ class DocumentService {
         userId,
       };
 
-      const docRef = await addDoc(collection(db, this.COLLECTION_NAME), documentData);
+      const docRef = await addDoc(
+        collection(db, this.COLLECTION_NAME),
+        documentData
+      );
       onProgress?.({ progress: 100, status: 'completed' });
 
       return {
         id: docRef.id,
         ...documentData,
       };
-           } catch (error) {
-             console.error('Error uploading document:', error);
-             
-             // Use improved error handling
-             const appError = ErrorHandler.handleError(error, 'document upload');
-             
-             onProgress?.({ 
-               progress: 0, 
-               status: 'error', 
-               error: appError.userMessage
-             });
-             throw new Error(appError.userMessage);
-           }
+    } catch (error) {
+      console.error('Error uploading document:', error);
+
+      // Use improved error handling
+      const appError = ErrorHandler.handleError(error, 'document upload');
+
+      onProgress?.({
+        progress: 0,
+        status: 'error',
+        error: appError.userMessage,
+      });
+      throw new Error(appError.userMessage);
+    }
   }
 
   async getDocuments(userId: string, category?: string): Promise<Document[]> {
-    try {
-      let q = query(
-        collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        orderBy('uploadDate', 'desc')
-      );
+    const maxRetries = 3;
+    let lastError: any;
 
-      if (category && category !== 'all') {
-        q = query(q, where('category', '==', category));
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        let q = query(
+          collection(db, this.COLLECTION_NAME),
+          where('userId', '==', userId),
+          orderBy('uploadDate', 'desc')
+        );
+
+        if (category && category !== 'all') {
+          q = query(q, where('category', '==', category));
+        }
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          uploadDate: doc.data().uploadDate.toDate(),
+        })) as Document[];
+      } catch (error) {
+        lastError = error;
+        console.warn(`Attempt ${attempt} failed to fetch documents:`, error);
+        
+        // If this is a connection error and not the last attempt, try to reset the connection
+        if (attempt < maxRetries && (error as any)?.code?.includes('unavailable') || (error as any)?.message?.includes('QUIC')) {
+          try {
+            await disableNetwork(db);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            await enableNetwork(db);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait another second
+          } catch (resetError) {
+            console.warn('Failed to reset Firestore connection:', resetError);
+          }
+        }
       }
-
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        uploadDate: doc.data().uploadDate.toDate(),
-      })) as Document[];
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      
-      // Use improved error handling
-      const appError = ErrorHandler.handleError(error, 'fetch documents');
-      throw new Error(appError.userMessage);
     }
+
+    // If all retries failed, throw the last error
+    console.error('All retries failed to fetch documents:', lastError);
+    const appError = ErrorHandler.handleError(lastError, 'fetch documents');
+    throw new Error(appError.userMessage);
   }
 
   async deleteDocument(documentId: string, userId: string): Promise<void> {
     try {
       // Get document to find storage path
       const docRef = doc(db, this.COLLECTION_NAME, documentId);
-      
+
       // Delete from Firestore
       await deleteDoc(docRef);
 
@@ -126,7 +163,7 @@ class DocumentService {
       // This requires storing the storage path in the document
     } catch (error) {
       console.error('Error deleting document:', error);
-      
+
       // Use improved error handling
       const appError = ErrorHandler.handleError(error, 'delete document');
       throw new Error(appError.userMessage);
@@ -134,7 +171,7 @@ class DocumentService {
   }
 
   async updateDocument(
-    documentId: string, 
+    documentId: string,
     updates: Partial<Pick<Document, 'name' | 'category' | 'tags' | 'isStarred'>>
   ): Promise<void> {
     try {
@@ -142,25 +179,31 @@ class DocumentService {
       await updateDoc(docRef, updates);
     } catch (error) {
       console.error('Error updating document:', error);
-      
+
       // Use improved error handling
       const appError = ErrorHandler.handleError(error, 'update document');
       throw new Error(appError.userMessage);
     }
   }
 
-  async searchDocuments(userId: string, searchQuery: string): Promise<Document[]> {
+  async searchDocuments(
+    userId: string,
+    searchQuery: string
+  ): Promise<Document[]> {
     try {
       const documents = await this.getDocuments(userId);
-      
-      return documents.filter(doc => 
-        doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        doc.category.toLowerCase().includes(searchQuery.toLowerCase())
+
+      return documents.filter(
+        doc =>
+          doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          doc.tags.some(tag =>
+            tag.toLowerCase().includes(searchQuery.toLowerCase())
+          ) ||
+          doc.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     } catch (error) {
       console.error('Error searching documents:', error);
-      
+
       // Use improved error handling
       const appError = ErrorHandler.handleError(error, 'search documents');
       throw new Error(appError.userMessage);
@@ -199,14 +242,16 @@ class DocumentService {
     }
 
     if (!allowedTypes.includes(file.type)) {
-      throw new Error(`File type "${file.type}" not supported. Supported types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, MD, CSV, JSON, XML, images (JPEG, PNG, GIF, WebP, BMP), and archives (ZIP, RAR, 7Z)`);
+      throw new Error(
+        `File type "${file.type}" not supported. Supported types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, MD, CSV, JSON, XML, images (JPEG, PNG, GIF, WebP, BMP), and archives (ZIP, RAR, 7Z)`
+      );
     }
   }
 
   private getFileType(filename: string): string {
     if (!filename) return 'unknown';
     const extension = filename.split('.').pop()?.toLowerCase();
-    
+
     switch (extension) {
       case 'pdf':
         return 'pdf';

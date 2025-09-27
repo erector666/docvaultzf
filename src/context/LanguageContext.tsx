@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { SupportedLanguage } from '../types';
 import { STORAGE_KEYS, APP_CONFIG } from '../constants';
+import { setUserPreference, getUserPreference } from '../utils/secureStorage';
 
 // Translation interface
 interface Translations {
@@ -202,14 +203,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   children,
 }) => {
   const [language, setLanguageState] = useState<SupportedLanguage>(() => {
-    const savedLanguage = localStorage.getItem(
-      STORAGE_KEYS.language
-    ) as SupportedLanguage;
+    const savedLanguage = getUserPreference('language') as SupportedLanguage;
     return savedLanguage || APP_CONFIG.defaultLanguage;
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.language, language);
+    setUserPreference('language', language);
     document.documentElement.lang = language;
   }, [language]);
 

@@ -26,6 +26,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { showError } from '../utils/notification';
 import { documentService } from '../services/documentService';
 
 export const DashboardPage: React.FC = () => {
@@ -173,10 +174,15 @@ export const DashboardPage: React.FC = () => {
 
   const handleViewDocument = (document: any) => {
     if (document.downloadURL) {
-      // Open document in new tab
-      window.open(document.downloadURL, '_blank');
+      try {
+        // Open document in new tab
+        window.open(document.downloadURL, '_blank');
+      } catch (error) {
+        console.error('Failed to open document:', error);
+        showError('Document Error', 'Failed to open document. Please try again.');
+      }
     } else {
-      alert('Document URL not available');
+      showError('Document Error', 'Document URL not available');
     }
   };
 

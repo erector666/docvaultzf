@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { createSafeBlobUrl, revokeSafeBlobUrl } from '../utils/blobCleanup';
 import { useNavigate } from 'react-router-dom';
 import {
   Upload,
@@ -88,18 +89,30 @@ export const UploadPage: React.FC = () => {
   }, []);
 
   const handleFiles = useCallback((files: File[]) => {
-    const newFiles: UploadedFile[] = files.map(file => ({
-      ...file,
-      id: generateFileId(),
-      progress: 0,
-      status: 'pending' as const,
-      size: file.size, // Explicitly set size to ensure it's preserved
-      type: file.type, // Explicitly set type to ensure it's preserved
-      name: file.name, // Explicitly set name to ensure it's preserved
-      preview: (file.type || '').startsWith('image/')
-        ? URL.createObjectURL(file)
-        : undefined,
-    }));
+    const newFiles: UploadedFile[] = files.map(file => {
+      let preview: string | undefined;
+      
+      // Only create blob URL for images and ensure it's valid
+      if (file.type.startsWith('image/')) {
+        try {
+          preview = createSafeBlobUrl(file);
+        } catch (error) {
+          console.warn('Failed to create blob URL for image preview:', error);
+          preview = undefined;
+        }
+      }
+      
+      return {
+        ...file,
+        id: generateFileId(),
+        progress: 0,
+        status: 'pending' as const,
+        size: file.size, // Explicitly set size to ensure it's preserved
+        type: file.type, // Explicitly set type to ensure it's preserved
+        name: file.name, // Explicitly set name to ensure it's preserved
+        preview,
+      };
+    });
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
   }, []);
@@ -109,13 +122,16 @@ export const UploadPage: React.FC = () => {
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  }, [handleFiles]);
+      const files = Array.from(e.dataTransfer.files);
+      handleFiles(files);
+    },
+    [handleFiles]
+  );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +145,7 @@ export const UploadPage: React.FC = () => {
     setUploadedFiles(prev => {
       const file = prev.find(f => f.id === fileId);
       if (file?.preview) {
-        URL.revokeObjectURL(file.preview);
+        revokeSafeBlobUrl(file.preview);
       }
       return prev.filter(f => f.id !== fileId);
     });
@@ -140,7 +156,7 @@ export const UploadPage: React.FC = () => {
     return () => {
       uploadedFiles.forEach(file => {
         if (file.preview) {
-          URL.revokeObjectURL(file.preview);
+          revokeSafeBlobUrl(file.preview);
         }
       });
     };
@@ -150,13 +166,15 @@ export const UploadPage: React.FC = () => {
     try {
       // Update status to uploading
       setUploadedFiles(prev =>
-        prev.map(f => (f.id === file.id ? { ...f, status: 'uploading' as const } : f))
+        prev.map(f =>
+          f.id === file.id ? { ...f, status: 'uploading' as const } : f
+        )
       );
 
       // Import Firebase services
       const { storage } = await import('../services/firebase');
       const { documentService } = await import('../services/documentService');
-      
+
       if (!storage) {
         throw new Error('Firebase Storage not available');
       }
@@ -174,14 +192,17 @@ export const UploadPage: React.FC = () => {
         currentUser.uid,
         'Uncategorized', // Default category
         [], // No tags initially
-        (progress) => {
+        progress => {
           setUploadedFiles(prev =>
             prev.map(f =>
               f.id === file.id
                 ? {
                     ...f,
                     progress: progress.progress,
-                    status: progress.status as 'uploading' | 'completed' | 'error',
+                    status: progress.status as
+                      | 'uploading'
+                      | 'completed'
+                      | 'error',
                     error: progress.error,
                   }
                 : f
@@ -194,12 +215,17 @@ export const UploadPage: React.FC = () => {
       setUploadedFiles(prev =>
         prev.map(f =>
           f.id === file.id
-            ? { ...f, documentId: result.id, status: 'completed' as const, progress: 100 }
+            ? {
+                ...f,
+                documentId: result.id,
+                status: 'completed' as const,
+                progress: 100,
+              }
             : f
         )
       );
 
-      console.log('File uploaded successfully:', result);
+      // File uploaded successfully
     } catch (error) {
       console.error('Upload failed:', error);
       setUploadedFiles(prev =>
@@ -248,7 +274,7 @@ export const UploadPage: React.FC = () => {
   const clearAllFiles = useCallback(() => {
     uploadedFiles.forEach(file => {
       if (file.preview) {
-        URL.revokeObjectURL(file.preview);
+        revokeSafeBlobUrl(file.preview);
       }
     });
     setUploadedFiles([]);
@@ -433,6 +459,23 @@ export const UploadPage: React.FC = () => {
                               src={file.preview}
                               alt={file.name}
                               className='w-12 h-12 object-cover rounded-lg'
+                              onError={(e) => {
+                                // If blob URL fails to load, revert to file icon
+                                console.warn('Blob URL failed to load for file:', file.name);
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center';
+                                  fallback.innerHTML = '<svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>';
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                              onLoad={() => {
+                                // Blob URL loaded successfully
+                                // Blob URL loaded successfully
+                              }}
                             />
                           ) : (
                             <div className='w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center'>

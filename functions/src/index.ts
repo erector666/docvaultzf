@@ -78,12 +78,16 @@ export const deleteTestUsers = onCall(async () => {
   try {
     const auth = getAuth();
     
-    // Test user UIDs to delete
-    const testUserUids = [
-      'EzCOnqAANdMpMXxcFDv2GWTokwG2', // test@example.com
-      'Vwj8GVi6zQWbgB8SUDPVG4TuAWP2', // kango666new@gmail.com
-      'lpG65dobmFgjZaJg9cN78jissYG3'  // testuser@example.com
-    ];
+    // Get test user UIDs from environment variable
+    const testUserUidsEnv = process.env.TEST_USER_UIDS;
+    if (!testUserUidsEnv) {
+      return {
+        success: false,
+        error: "TEST_USER_UIDS environment variable not set",
+      };
+    }
+    
+    const testUserUids = testUserUidsEnv.split(',').map(uid => uid.trim());
 
     logger.info("Deleting test users", {uids: testUserUids});
     

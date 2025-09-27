@@ -84,6 +84,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 theme: 'system',
                 notifications: true,
                 autoCategorization: true,
+                emailUpdates: true,
+                securityAlerts: true,
               },
               createdAt: new Date(),
               lastLoginAt: new Date(),
@@ -96,18 +98,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
-          
+
           // Handle specific Firestore errors
           if (error instanceof Error) {
             if (error.message.includes('permission-denied')) {
-              console.error('Firestore permission denied - user may not have access');
+              console.error(
+                'Firestore permission denied - user may not have access'
+              );
             } else if (error.message.includes('unavailable')) {
-              console.error('Firestore service unavailable - network or service issue');
+              console.error(
+                'Firestore service unavailable - network or service issue'
+              );
             } else if (error.message.includes('unauthenticated')) {
               console.error('User not authenticated for Firestore access');
             }
           }
-          
+
           // Set user to null but don't break the auth flow
           setUser(null);
         }
@@ -123,13 +129,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (credentials: LoginForm) => {
     try {
-      console.log('Attempting login for:', credentials.email);
+      // Login attempt in progress
       const result = await signInWithEmailAndPassword(
         auth,
         credentials.email,
         credentials.password
       );
-      console.log('Login successful:', result.user.uid);
+      // Login successful
     } catch (error: any) {
       console.error('Login error:', error);
       // Provide more specific error messages
@@ -151,19 +157,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: RegisterForm) => {
     try {
-      console.log('Attempting registration for:', userData.email);
+      // Registration attempt in progress
       const { user: newUser } = await createUserWithEmailAndPassword(
         auth,
         userData.email,
         userData.password
       );
-      console.log('Registration successful:', newUser.uid);
+      // Registration successful
 
       if (userData.displayName) {
         await updateProfile(newUser, {
           displayName: userData.displayName,
         });
-        console.log('Profile updated with display name');
+        // Profile updated with display name
       }
 
       // User document will be created in the auth state change listener
@@ -186,13 +192,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithGoogle = async () => {
     try {
-      console.log('Attempting Google sign-in');
+      // Google sign-in attempt in progress
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
 
       const result = await signInWithPopup(auth, provider);
-      console.log('Google sign-in successful:', result.user.uid);
+      // Google sign-in successful
       // User document will be created in the auth state change listener
     } catch (error: any) {
       console.error('Google sign-in error:', error);
@@ -241,16 +247,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(prev => (prev ? { ...prev, ...updates } : null));
     } catch (error: any) {
       console.error('Error updating user profile:', error);
-      
+
       // Handle specific Firestore errors
       if (error.code === 'permission-denied') {
         throw new Error('You do not have permission to update this profile');
       } else if (error.code === 'unavailable') {
-        throw new Error('Service temporarily unavailable. Please try again later.');
+        throw new Error(
+          'Service temporarily unavailable. Please try again later.'
+        );
       } else if (error.code === 'unauthenticated') {
         throw new Error('Please log in again to update your profile');
       }
-      
+
       throw new Error(error.message || 'Profile update failed');
     }
   };
