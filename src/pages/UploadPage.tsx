@@ -229,7 +229,7 @@ export const UploadPage: React.FC = () => {
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [uploadedFiles, navigate, simulateUpload]);
+  }, [uploadedFiles, navigate, uploadFile]);
 
   const clearAllFiles = useCallback(() => {
     uploadedFiles.forEach(file => {
