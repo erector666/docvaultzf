@@ -157,16 +157,47 @@ export const ProfilePage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Mock password change - in real app, this would call Firebase auth
-      console.log('Password changed successfully');
+      // Import Firebase Auth functions
+      const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
+      const { auth } = await import('../services/firebase');
+
+      if (!auth.currentUser) {
+        throw new Error('No user logged in');
+      }
+
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email!,
+        passwordData.currentPassword
+      );
+      
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      
+      // Update password
+      await updatePassword(auth.currentUser, passwordData.newPassword);
+      
+      // Clear form
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
+      
       setShowPasswordForm(false);
-    } catch (error) {
+      alert('Password updated successfully!');
+    } catch (error: any) {
       console.error('Error changing password:', error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/wrong-password') {
+        alert('Current password is incorrect');
+      } else if (error.code === 'auth/weak-password') {
+        alert('New password is too weak. Please choose a stronger password.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        alert('Please log out and log back in before changing your password.');
+      } else {
+        alert(`Failed to change password: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }

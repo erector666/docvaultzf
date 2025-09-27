@@ -91,17 +91,46 @@ export const SettingsPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // TODO: Implement actual password change with Firebase Auth
-      console.log('Password change requested');
-      alert('Password change functionality not yet implemented');
+      // Import Firebase Auth functions
+      const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
+      const { auth } = await import('../services/firebase');
+
+      if (!auth.currentUser) {
+        throw new Error('No user logged in');
+      }
+
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email!,
+        passwordData.currentPassword
+      );
+      
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      
+      // Update password
+      await updatePassword(auth.currentUser, passwordData.newPassword);
+      
+      // Clear form
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-    } catch (error) {
+      
+      alert('Password updated successfully!');
+    } catch (error: any) {
       console.error('Error changing password:', error);
-      alert('Failed to change password. Please try again.');
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/wrong-password') {
+        alert('Current password is incorrect');
+      } else if (error.code === 'auth/weak-password') {
+        alert('New password is too weak. Please choose a stronger password.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        alert('Please log out and log back in before changing your password.');
+      } else {
+        alert(`Failed to change password: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,27 +141,172 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  const handleExportData = () => {
-    // TODO: Implement actual data export functionality
-    console.log('Exporting user data...');
-    alert('Data export functionality not yet implemented. This would download all your documents, settings, and profile data.');
+  const handleExportData = async () => {
+    setIsLoading(true);
+    try {
+      // Import required services
+      const { documentService } = await import('../services/documentService');
+      
+      if (!user) {
+        throw new Error('No user logged in');
+      }
+
+      // Get user documents
+      const documents = await documentService.getDocuments(user.uid);
+      
+      // Prepare export data
+      const exportData = {
+        user: {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          bio: user.bio,
+          company: user.company,
+          website: user.website,
+          preferences: user.preferences,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+          storageUsed: user.storageUsed,
+          documentCount: user.documentCount,
+        },
+        documents: documents.map(doc => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: doc.size,
+          uploadDate: doc.uploadDate,
+          category: doc.category,
+          tags: doc.tags,
+          isStarred: doc.isStarred,
+          downloadURL: doc.downloadURL,
+        })),
+        exportDate: new Date().toISOString(),
+        version: '1.0',
+      };
+
+      // Create and download JSON file
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `docvault-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert('Data exported successfully!');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement actual account deletion with confirmation
+  const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
       'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.'
     );
     
-    if (confirmed) {
-      const doubleConfirmed = window.confirm(
-        'This is your final warning. All your documents, settings, and account data will be permanently deleted. Type "DELETE" to confirm.'
-      );
+    if (!confirmed) return;
+
+    const doubleConfirmed = window.confirm(
+      'This is your final warning. All your documents, settings, and account data will be permanently deleted. Are you absolutely sure?'
+    );
+    
+    if (!doubleConfirmed) return;
+
+    setIsLoading(true);
+    try {
+      // Import required services
+      const { deleteUser } = await import('firebase/auth');
+      const { auth } = await import('../services/firebase');
+      const { documentService } = await import('../services/documentService');
       
-      if (doubleConfirmed) {
-        console.log('Deleting account...');
-        alert('Account deletion functionality not yet implemented. This would permanently delete your account and all associated data.');
+      if (!auth.currentUser) {
+        throw new Error('No user logged in');
       }
+
+      // Delete all user documents and storage files
+      if (user) {
+        const documents = await documentService.getDocuments(user.uid);
+        
+        // Delete each document (this will also delete from storage)
+        for (const doc of documents) {
+          try {
+            await documentService.deleteDocument(doc.id, user.uid);
+          } catch (error) {
+            console.warn(`Failed to delete document ${doc.id}:`, error);
+          }
+        }
+      }
+
+      // Delete the user account
+      await deleteUser(auth.currentUser);
+      
+      alert('Account deleted successfully. You will be redirected to the login page.');
+      
+      // Redirect to login page
+      window.location.href = '/login';
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/requires-recent-login') {
+        alert('For security reasons, please log out and log back in before deleting your account.');
+      } else {
+        alert(`Failed to delete account: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEnable2FA = async () => {
+    setIsLoading(true);
+    try {
+      // Import Firebase Auth functions
+      const { multiFactor } = await import('firebase/auth');
+      const { auth } = await import('../services/firebase');
+      
+      if (!auth.currentUser) {
+        throw new Error('No user logged in');
+      }
+
+      // Check if user already has 2FA enabled
+      const multiFactorUser = multiFactor(auth.currentUser);
+      
+      if (multiFactorUser.enrolledFactors.length > 0) {
+        alert('Two-factor authentication is already enabled for your account.');
+        return;
+      }
+
+      // For now, show a placeholder message with instructions
+      // In a real implementation, you would:
+      // 1. Generate a QR code for authenticator apps
+      // 2. Allow SMS phone number setup
+      // 3. Handle the enrollment process
+      
+      alert(`Two-Factor Authentication Setup:
+
+1. Download an authenticator app (Google Authenticator, Authy, etc.)
+2. Scan the QR code that would be generated here
+3. Enter the verification code to complete setup
+
+Note: This is a placeholder implementation. Full 2FA setup would require additional Firebase configuration and UI components.
+
+Current status: 2FA is not yet configured for your account.`);
+      
+      console.log('2FA setup requested - placeholder implementation');
+    } catch (error) {
+      console.error('Error setting up 2FA:', error);
+      alert('Failed to setup 2FA. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -571,7 +745,7 @@ export const SettingsPage: React.FC = () => {
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => alert('2FA setup functionality not yet implemented')}
+                          onClick={handleEnable2FA}
                           className='px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
                         >
                           <Shield className='w-5 h-5' />

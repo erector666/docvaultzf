@@ -1,6 +1,7 @@
 import { storage, db } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { ErrorHandler } from '../utils/errorHandler';
 
 export interface Document {
   id: string;
@@ -71,32 +72,19 @@ class DocumentService {
         id: docRef.id,
         ...documentData,
       };
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      
-      // Handle specific Firestore errors
-      let errorMessage = 'Upload failed';
-      if (error instanceof Error) {
-        if (error.message.includes('permission-denied')) {
-          errorMessage = 'You do not have permission to upload documents';
-        } else if (error.message.includes('unavailable')) {
-          errorMessage = 'Service temporarily unavailable. Please try again later.';
-        } else if (error.message.includes('unauthenticated')) {
-          errorMessage = 'Please log in to upload documents';
-        } else if (error.message.includes('quota-exceeded')) {
-          errorMessage = 'Storage quota exceeded. Please contact support.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      onProgress?.({ 
-        progress: 0, 
-        status: 'error', 
-        error: errorMessage
-      });
-      throw new Error(errorMessage);
-    }
+           } catch (error) {
+             console.error('Error uploading document:', error);
+             
+             // Use improved error handling
+             const appError = ErrorHandler.handleError(error, 'document upload');
+             
+             onProgress?.({ 
+               progress: 0, 
+               status: 'error', 
+               error: appError.userMessage
+             });
+             throw new Error(appError.userMessage);
+           }
   }
 
   async getDocuments(userId: string, category?: string): Promise<Document[]> {
@@ -120,18 +108,9 @@ class DocumentService {
     } catch (error) {
       console.error('Error fetching documents:', error);
       
-      // Handle specific Firestore errors
-      if (error instanceof Error) {
-        if (error.message.includes('permission-denied')) {
-          throw new Error('You do not have permission to access documents');
-        } else if (error.message.includes('unavailable')) {
-          throw new Error('Service temporarily unavailable. Please try again later.');
-        } else if (error.message.includes('unauthenticated')) {
-          throw new Error('Please log in to view documents');
-        }
-      }
-      
-      throw error;
+      // Use improved error handling
+      const appError = ErrorHandler.handleError(error, 'fetch documents');
+      throw new Error(appError.userMessage);
     }
   }
 
@@ -148,18 +127,9 @@ class DocumentService {
     } catch (error) {
       console.error('Error deleting document:', error);
       
-      // Handle specific Firestore errors
-      if (error instanceof Error) {
-        if (error.message.includes('permission-denied')) {
-          throw new Error('You do not have permission to delete this document');
-        } else if (error.message.includes('unavailable')) {
-          throw new Error('Service temporarily unavailable. Please try again later.');
-        } else if (error.message.includes('unauthenticated')) {
-          throw new Error('Please log in to delete documents');
-        }
-      }
-      
-      throw error;
+      // Use improved error handling
+      const appError = ErrorHandler.handleError(error, 'delete document');
+      throw new Error(appError.userMessage);
     }
   }
 
@@ -173,18 +143,9 @@ class DocumentService {
     } catch (error) {
       console.error('Error updating document:', error);
       
-      // Handle specific Firestore errors
-      if (error instanceof Error) {
-        if (error.message.includes('permission-denied')) {
-          throw new Error('You do not have permission to update this document');
-        } else if (error.message.includes('unavailable')) {
-          throw new Error('Service temporarily unavailable. Please try again later.');
-        } else if (error.message.includes('unauthenticated')) {
-          throw new Error('Please log in to update documents');
-        }
-      }
-      
-      throw error;
+      // Use improved error handling
+      const appError = ErrorHandler.handleError(error, 'update document');
+      throw new Error(appError.userMessage);
     }
   }
 
@@ -200,18 +161,9 @@ class DocumentService {
     } catch (error) {
       console.error('Error searching documents:', error);
       
-      // Handle specific Firestore errors
-      if (error instanceof Error) {
-        if (error.message.includes('permission-denied')) {
-          throw new Error('You do not have permission to search documents');
-        } else if (error.message.includes('unavailable')) {
-          throw new Error('Service temporarily unavailable. Please try again later.');
-        } else if (error.message.includes('unauthenticated')) {
-          throw new Error('Please log in to search documents');
-        }
-      }
-      
-      throw error;
+      // Use improved error handling
+      const appError = ErrorHandler.handleError(error, 'search documents');
+      throw new Error(appError.userMessage);
     }
   }
 
