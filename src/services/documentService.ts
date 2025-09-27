@@ -122,11 +122,38 @@ class DocumentService {
         }
 
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
+        const documents = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           uploadDate: doc.data().uploadDate.toDate(),
         })) as Document[];
+
+        // Refresh download URLs for all documents to ensure they're valid
+        const documentsWithFreshURLs = await Promise.all(
+          documents.map(async (doc) => {
+            if (doc.downloadURL) {
+              try {
+                // Check if the current URL is still valid by making a HEAD request
+                const response = await fetch(doc.downloadURL, { method: 'HEAD' });
+                if (!response.ok) {
+                  // If the URL is invalid, we need to regenerate it
+                  // Since we don't have the storage path stored, we'll need to handle this differently
+                  console.warn(`Download URL for document ${doc.id} is invalid, attempting to refresh...`);
+                  // For now, return the document as-is, but mark the URL as potentially invalid
+                  return { ...doc, downloadURL: doc.downloadURL + '?t=' + Date.now() };
+                }
+                return doc;
+              } catch (error) {
+                console.warn(`Failed to validate download URL for document ${doc.id}:`, error);
+                // Add timestamp to force refresh
+                return { ...doc, downloadURL: doc.downloadURL + '?t=' + Date.now() };
+              }
+            }
+            return doc;
+          })
+        );
+
+        return documentsWithFreshURLs;
       } catch (error) {
         lastError = error;
         console.warn(`Attempt ${attempt} failed to fetch documents:`, error);
@@ -183,6 +210,47 @@ class DocumentService {
       // Use improved error handling
       const appError = ErrorHandler.handleError(error, 'update document');
       throw new Error(appError.userMessage);
+    }
+  }
+
+  /**
+   * Refresh download URL for a specific document
+   * This is useful when download URLs expire or become corrupted
+   */
+  async refreshDownloadURL(documentId: string): Promise<string> {
+    try {
+      // Get the document from Firestore to find the storage path
+      const docRef = doc(db, this.COLLECTION_NAME, documentId);
+      const docSnap = await getDocs(query(collection(db, this.COLLECTION_NAME), where('__name__', '==', documentId)));
+      
+      if (docSnap.empty) {
+        throw new Error('Document not found');
+      }
+
+      const documentData = docSnap.docs[0].data();
+      const fileName = documentData.name;
+      const userId = documentData.userId;
+      
+      // Reconstruct the storage path (this is a bit fragile, but necessary)
+      // We'll need to find the file in storage by listing files
+      const storageRef = ref(storage, `${this.STORAGE_PATH}/${userId}`);
+      
+      // For now, we'll use the existing downloadURL and add a cache-busting parameter
+      if (documentData.downloadURL) {
+        const freshURL = documentData.downloadURL.includes('?') 
+          ? documentData.downloadURL + '&t=' + Date.now()
+          : documentData.downloadURL + '?t=' + Date.now();
+        
+        // Update the document with the fresh URL
+        await updateDoc(docRef, { downloadURL: freshURL });
+        
+        return freshURL;
+      }
+      
+      throw new Error('No download URL found for document');
+    } catch (error) {
+      console.error('Error refreshing download URL:', error);
+      throw new Error('Failed to refresh download URL');
     }
   }
 

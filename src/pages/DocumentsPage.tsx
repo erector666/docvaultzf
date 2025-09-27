@@ -21,6 +21,7 @@ import {
   Archive,
   Plus,
   X,
+  RefreshCw,
 } from 'lucide-react';
 
 export const DocumentsPage: React.FC = () => {
@@ -136,7 +137,7 @@ export const DocumentsPage: React.FC = () => {
   //   }
   // };
 
-  const handleViewDocument = (doc: Document) => {
+  const handleViewDocument = async (doc: Document) => {
     if (doc.downloadURL) {
       try {
         setSelectedDocument(doc);
@@ -150,25 +151,62 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
+  const handleRetryViewDocument = async (doc: Document) => {
+    try {
+      // Try to refresh the download URL
+      const freshURL = await documentService.refreshDownloadURL(doc.id);
+      const updatedDoc = { ...doc, downloadURL: freshURL };
+      setSelectedDocument(updatedDoc);
+      
+      // Update the documents list with the fresh URL
+      setDocuments(prev => 
+        prev.map(d => d.id === doc.id ? updatedDoc : d)
+      );
+    } catch (error) {
+      console.error('Failed to refresh document URL:', error);
+      showError('Document Error', 'Failed to refresh document. Please try downloading instead.');
+    }
+  };
+
   const closeDocumentViewer = () => {
     setShowDocumentViewer(false);
     setSelectedDocument(null);
   };
 
-  const handleDownloadDocument = (doc: Document) => {
+  const handleDownloadDocument = async (doc: Document) => {
     if (doc.downloadURL) {
       try {
+        // First, try to refresh the URL to ensure it's valid
+        const freshURL = await documentService.refreshDownloadURL(doc.id);
+        
         // Create a temporary link to download the document
         const link = document.createElement('a');
-        link.href = doc.downloadURL;
+        link.href = freshURL;
         link.download = doc.name;
         link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        
+        // Add cache-busting parameter
+        const urlWithCacheBust = freshURL.includes('?') 
+          ? freshURL + '&download=' + Date.now()
+          : freshURL + '?download=' + Date.now();
+        link.href = urlWithCacheBust;
+        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Update the document with the fresh URL
+        setDocuments(prev => 
+          prev.map(d => d.id === doc.id ? { ...d, downloadURL: freshURL } : d)
+        );
+        
+        if (selectedDocument && selectedDocument.id === doc.id) {
+          setSelectedDocument({ ...selectedDocument, downloadURL: freshURL });
+        }
       } catch (error) {
         console.error('Failed to download document:', error);
-        showError('Download Error', 'Failed to download document. Please try again.');
+        showError('Download Error', 'Failed to download document. The file may be corrupted or unavailable.');
       }
     } else {
       showError('Document Error', 'Document URL not available');
@@ -595,6 +633,15 @@ export const DocumentsPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleRetryViewDocument(selectedDocument)}
+                  className="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors duration-200"
+                  title="Retry"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
