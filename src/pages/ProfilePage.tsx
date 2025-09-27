@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -102,12 +102,14 @@ export const ProfilePage: React.FC = () => {
     }
 
     setIsUploadingPhoto(true);
+    let previewURL: string | null = null;
+    
     try {
       // Create a preview URL for immediate display
-      const previewURL = URL.createObjectURL(file);
+      previewURL = URL.createObjectURL(file);
       setProfileData(prev => ({
         ...prev,
-        profileImage: previewURL
+        profileImage: previewURL!
       }));
 
       // Upload to Firebase Storage
@@ -134,11 +136,17 @@ export const ProfilePage: React.FC = () => {
         profileImage: downloadURL
       }));
       
+      // Clean up preview URL since we now have the real URL
+      if (previewURL) {
+        URL.revokeObjectURL(previewURL);
+      }
+      
       console.log('Photo uploaded successfully:', downloadURL);
       
     } catch (error) {
       console.error('Error uploading photo:', error);
       alert('Failed to upload photo. Please try again.');
+      
       // Revert to previous image
       setProfileData(prev => ({
         ...prev,

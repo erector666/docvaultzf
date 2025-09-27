@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -134,6 +134,17 @@ export const UploadPage: React.FC = () => {
       return prev.filter(f => f.id !== fileId);
     });
   }, []);
+
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      uploadedFiles.forEach(file => {
+        if (file.preview) {
+          URL.revokeObjectURL(file.preview);
+        }
+      });
+    };
+  }, [uploadedFiles]);
 
   const uploadFile = useCallback(async (file: UploadedFile) => {
     try {

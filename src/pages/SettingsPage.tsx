@@ -196,7 +196,11 @@ export const SettingsPage: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      
+      // Clean up the blob URL after a short delay to ensure download starts
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
       
       alert('Data exported successfully!');
     } catch (error) {
