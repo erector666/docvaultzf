@@ -110,18 +110,31 @@ export const ProfilePage: React.FC = () => {
         profileImage: previewURL
       }));
 
-      // TODO: Upload to Firebase Storage and get the download URL
-      // For now, we'll just use the preview URL
-      console.log('Photo upload requested:', file.name);
+      // Upload to Firebase Storage
+      const { storage } = await import('../services/firebase');
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
       
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!storage) {
+        throw new Error('Firebase Storage not available');
+      }
+
+      // Create storage reference
+      const storageRef = ref(storage, `profile-images/${user?.uid}/${file.name}`);
       
-      // In a real implementation, you would:
-      // 1. Upload to Firebase Storage
-      // 2. Get the download URL
-      // 3. Update the user's photoURL in Firestore
-      // 4. Update Firebase Auth profile
+      // Upload file
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      // Update user profile with new photo URL
+      await updateUserProfile({ photoURL: downloadURL });
+      
+      // Update local state with the actual download URL
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: downloadURL
+      }));
+      
+      console.log('Photo uploaded successfully:', downloadURL);
       
     } catch (error) {
       console.error('Error uploading photo:', error);

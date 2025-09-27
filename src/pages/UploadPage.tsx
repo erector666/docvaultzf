@@ -132,45 +132,74 @@ export const UploadPage: React.FC = () => {
     });
   }, []);
 
-  const simulateUpload = useCallback(async (file: UploadedFile) => {
-    return new Promise<void>((resolve, reject) => {
-      const interval = setInterval(() => {
-        setUploadedFiles(prev =>
-          prev.map(f => {
-            if (f.id === file.id) {
-              const newProgress = Math.min(
-                f.progress + Math.random() * 20,
-                100
-              );
-              if (newProgress >= 100) {
-                clearInterval(interval);
-                setTimeout(() => {
-                  setUploadedFiles(prev =>
-                    prev.map(f2 =>
-                      f2.id === file.id
-                        ? {
-                            ...f2,
-                            progress: 100,
-                            status: 'completed' as const,
-                            documentId: generateFileId(),
-                          }
-                        : f2
-                    )
-                  );
-                  resolve();
-                }, 500);
-              }
-              return {
+  const uploadFile = useCallback(async (file: UploadedFile) => {
+    try {
+      // Update status to uploading
+      setUploadedFiles(prev =>
+        prev.map(f => (f.id === file.id ? { ...f, status: 'uploading' as const } : f))
+      );
+
+      // Import Firebase services
+      const { storage } = await import('../services/firebase');
+      const { documentService } = await import('../services/documentService');
+      
+      if (!storage) {
+        throw new Error('Firebase Storage not available');
+      }
+
+      // Get current user
+      const { auth } = await import('../services/firebase');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      // Upload to Firebase Storage and save to Firestore
+      const result = await documentService.uploadDocument(
+        file,
+        currentUser.uid,
+        'Uncategorized', // Default category
+        [], // No tags initially
+        (progress) => {
+          setUploadedFiles(prev =>
+            prev.map(f =>
+              f.id === file.id
+                ? {
+                    ...f,
+                    progress: progress.progress,
+                    status: progress.status as 'uploading' | 'completed' | 'error',
+                    error: progress.error,
+                  }
+                : f
+            )
+          );
+        }
+      );
+
+      // Update file with document ID
+      setUploadedFiles(prev =>
+        prev.map(f =>
+          f.id === file.id
+            ? { ...f, documentId: result.id, status: 'completed' as const, progress: 100 }
+            : f
+        )
+      );
+
+      console.log('File uploaded successfully:', result);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      setUploadedFiles(prev =>
+        prev.map(f =>
+          f.id === file.id
+            ? {
                 ...f,
-                progress: newProgress,
-                status: 'uploading' as const,
-              };
-            }
-            return f;
-          })
-        );
-      }, 200);
-    });
+                status: 'error' as const,
+                error: error instanceof Error ? error.message : 'Upload failed',
+              }
+            : f
+        )
+      );
+    }
   }, []);
 
   const handleUpload = useCallback(async () => {
@@ -180,11 +209,11 @@ export const UploadPage: React.FC = () => {
     setUploadProgress(0);
 
     try {
-      // Simulate upload process
+      // Upload files to Firebase Storage and Firestore
       const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
 
       for (let i = 0; i < pendingFiles.length; i++) {
-        await simulateUpload(pendingFiles[i]);
+        await uploadFile(pendingFiles[i]);
         setUploadProgress(((i + 1) / pendingFiles.length) * 100);
       }
 
