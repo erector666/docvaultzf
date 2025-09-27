@@ -28,6 +28,7 @@ export const ProfilePage: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const [profileData, setProfileData] = useState({
     displayName: user?.displayName || '',
@@ -81,6 +82,57 @@ export const ProfilePage: React.FC = () => {
       console.error('Error updating profile:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPG, PNG, or GIF)');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      // Create a preview URL for immediate display
+      const previewURL = URL.createObjectURL(file);
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: previewURL
+      }));
+
+      // TODO: Upload to Firebase Storage and get the download URL
+      // For now, we'll just use the preview URL
+      console.log('Photo upload requested:', file.name);
+      
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // In a real implementation, you would:
+      // 1. Upload to Firebase Storage
+      // 2. Get the download URL
+      // 3. Update the user's photoURL in Firestore
+      // 4. Update Firebase Auth profile
+      
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Failed to upload photo. Please try again.');
+      // Revert to previous image
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: user?.photoURL || ''
+      }));
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -271,13 +323,28 @@ export const ProfilePage: React.FC = () => {
                     )}
                   </div>
                   {isEditing && (
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className='absolute -bottom-1 -right-1 p-2 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg transition-all duration-200'
-                    >
-                      <Camera className='w-4 h-4' />
-                    </motion.button>
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        id="photo-upload"
+                        disabled={isUploadingPhoto}
+                      />
+                      <motion.label
+                        htmlFor="photo-upload"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className={`absolute -bottom-1 -right-1 p-2 rounded-full shadow-lg transition-all duration-200 cursor-pointer ${
+                          isUploadingPhoto 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-primary-600 hover:bg-primary-700'
+                        }`}
+                      >
+                        <Camera className={`w-4 h-4 ${isUploadingPhoto ? 'animate-pulse' : ''}`} />
+                      </motion.label>
+                    </>
                   )}
                 </div>
 
