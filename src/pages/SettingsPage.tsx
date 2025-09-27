@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings as SettingsIcon,
-  User,
   Shield,
   Database,
-  Download,
-  Trash2,
   Save,
   Check,
   Eye,
@@ -25,20 +22,11 @@ export const SettingsPage: React.FC = () => {
   const { setLanguage, language } = useLanguage();
   const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('preferences');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Form states
-  const [profileData, setProfileData] = useState({
-    displayName: user?.displayName || '',
-    email: user?.email || '',
-    bio: '',
-    company: '',
-    website: '',
-  });
 
   const [preferences, setPreferences] = useState({
     language: language,
@@ -55,20 +43,7 @@ export const SettingsPage: React.FC = () => {
     confirmPassword: '',
   });
 
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        displayName: user.displayName || '',
-        email: user.email || '',
-        bio: user.bio || '',
-        company: user.company || '',
-        website: user.website || '',
-      });
-    }
-  }, [user]);
-
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
     { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'data', label: 'Data & Privacy', icon: Database },
@@ -86,24 +61,15 @@ export const SettingsPage: React.FC = () => {
     { id: 'system', name: 'System', icon: Monitor },
   ];
 
-  const handleSaveProfile = async () => {
-    setIsLoading(true);
-    try {
-      await updateUserProfile(profileData);
-      showSuccessMessage();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSavePreferences = async () => {
     setIsLoading(true);
     try {
-      await updateUserProfile({ preferences });
+      // Update language and theme immediately
       setLanguage(preferences.language);
       setTheme(preferences.theme);
+      
+      // Save to user profile
+      await updateUserProfile({ preferences });
       showSuccessMessage();
     } catch (error) {
       console.error('Error updating preferences:', error);
@@ -118,11 +84,16 @@ export const SettingsPage: React.FC = () => {
       return;
     }
 
+    if (passwordData.newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Password change logic would go here
+      // TODO: Implement actual password change with Firebase Auth
       console.log('Password change requested');
-      showSuccessMessage();
+      alert('Password change functionality not yet implemented');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -130,6 +101,7 @@ export const SettingsPage: React.FC = () => {
       });
     } catch (error) {
       console.error('Error changing password:', error);
+      alert('Failed to change password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -141,13 +113,27 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleExportData = () => {
-    // Export user data logic
+    // TODO: Implement actual data export functionality
     console.log('Exporting user data...');
+    alert('Data export functionality not yet implemented. This would download all your documents, settings, and profile data.');
   };
 
   const handleDeleteAccount = () => {
-    // Delete account logic
-    console.log('Deleting account...');
+    // TODO: Implement actual account deletion with confirmation
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.'
+    );
+    
+    if (confirmed) {
+      const doubleConfirmed = window.confirm(
+        'This is your final warning. All your documents, settings, and account data will be permanently deleted. Type "DELETE" to confirm.'
+      );
+      
+      if (doubleConfirmed) {
+        console.log('Deleting account...');
+        alert('Account deletion functionality not yet implemented. This would permanently delete your account and all associated data.');
+      }
+    }
   };
 
   return (
@@ -255,147 +241,6 @@ export const SettingsPage: React.FC = () => {
           >
             <div className='bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700/20 p-6 shadow-lg'>
               <AnimatePresence mode='wait'>
-                {/* Profile Tab */}
-                {activeTab === 'profile' && (
-                  <motion.div
-                    key='profile'
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className='flex items-center space-x-3 mb-6'>
-                      <User className='w-6 h-6 text-primary-600 dark:text-primary-400' />
-                      <h2 className='text-xl font-semibold text-gray-900 dark:text-white'>
-                        Profile Information
-                      </h2>
-                    </div>
-
-                    <div className='space-y-6'>
-                      {/* Profile Picture */}
-                      <div className='flex items-center space-x-6'>
-                        <div className='w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center'>
-                          {user?.photoURL ? (
-                            <img
-                              src={user.photoURL}
-                              alt='Profile'
-                              className='w-20 h-20 rounded-full object-cover'
-                            />
-                          ) : (
-                            <User className='w-10 h-10 text-primary-600 dark:text-primary-400' />
-                          )}
-                        </div>
-                        <div>
-                          <button className='px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200'>
-                            Change Photo
-                          </button>
-                          <p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
-                            JPG, PNG or GIF. Max size 2MB.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Form Fields */}
-                      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                        <div>
-                          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                            Display Name
-                          </label>
-                          <input
-                            type='text'
-                            value={profileData.displayName}
-                            onChange={e =>
-                              setProfileData({
-                                ...profileData,
-                                displayName: e.target.value,
-                              })
-                            }
-                            className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                          />
-                        </div>
-
-                        <div>
-                          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                            Email
-                          </label>
-                          <input
-                            type='email'
-                            value={profileData.email}
-                            disabled
-                            className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                          />
-                          <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                            Email cannot be changed
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                            Company
-                          </label>
-                          <input
-                            type='text'
-                            value={profileData.company}
-                            onChange={e =>
-                              setProfileData({
-                                ...profileData,
-                                company: e.target.value,
-                              })
-                            }
-                            className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                          />
-                        </div>
-
-                        <div>
-                          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                            Website
-                          </label>
-                          <input
-                            type='url'
-                            value={profileData.website}
-                            onChange={e =>
-                              setProfileData({
-                                ...profileData,
-                                website: e.target.value,
-                              })
-                            }
-                            className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                          Bio
-                        </label>
-                        <textarea
-                          value={profileData.bio}
-                          onChange={e =>
-                            setProfileData({
-                              ...profileData,
-                              bio: e.target.value,
-                            })
-                          }
-                          rows={4}
-                          className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                          placeholder='Tell us about yourself...'
-                        />
-                      </div>
-
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleSaveProfile}
-                        disabled={isLoading}
-                        className='px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
-                      >
-                        <Save className='w-5 h-5' />
-                        <span>{isLoading ? 'Saving...' : 'Save Profile'}</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-
                 {/* Preferences Tab */}
                 {activeTab === 'preferences' && (
                   <motion.div
@@ -479,72 +324,105 @@ export const SettingsPage: React.FC = () => {
 
                       {/* Notifications */}
                       <div>
-                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                           Notifications
                         </label>
                         <div className='space-y-4'>
-                          {[
-                            {
-                              key: 'notifications',
-                              label: 'Push Notifications',
-                              description:
-                                'Receive notifications about document processing',
-                            },
-                            {
-                              key: 'emailUpdates',
-                              label: 'Email Updates',
-                              description:
-                                'Get email notifications for important updates',
-                            },
-                            {
-                              key: 'securityAlerts',
-                              label: 'Security Alerts',
-                              description:
-                                'Notifications about account security',
-                            },
-                          ].map(item => (
-                            <div
-                              key={item.key}
-                              className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'
-                            >
-                              <div>
-                                <div className='font-medium text-gray-900 dark:text-white'>
-                                  {item.label}
-                                </div>
-                                <div className='text-sm text-gray-600 dark:text-gray-400'>
-                                  {item.description}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setPreferences({
-                                    ...preferences,
-                                    [item.key]:
-                                      !preferences[
-                                        item.key as keyof typeof preferences
-                                      ],
-                                  })
-                                }
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-                                  preferences[
-                                    item.key as keyof typeof preferences
-                                  ]
-                                    ? 'bg-primary-600'
-                                    : 'bg-gray-300 dark:bg-gray-600'
-                                }`}
-                              >
-                                <span
-                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                                    preferences[
-                                      item.key as keyof typeof preferences
-                                    ]
-                                      ? 'translate-x-6'
-                                      : 'translate-x-1'
-                                  }`}
-                                />
-                              </button>
+                          <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                            <div>
+                              <h4 className='font-medium text-gray-900 dark:text-white'>
+                                Push Notifications
+                              </h4>
+                              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                                Receive notifications about document processing
+                              </p>
                             </div>
-                          ))}
+                            <button
+                              onClick={() =>
+                                setPreferences({
+                                  ...preferences,
+                                  notifications: !preferences.notifications,
+                                })
+                              }
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                                preferences.notifications
+                                  ? 'bg-primary-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                                  preferences.notifications
+                                    ? 'translate-x-6'
+                                    : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+
+                          <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                            <div>
+                              <h4 className='font-medium text-gray-900 dark:text-white'>
+                                Email Updates
+                              </h4>
+                              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                                Get email notifications for important updates
+                              </p>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setPreferences({
+                                  ...preferences,
+                                  emailUpdates: !preferences.emailUpdates,
+                                })
+                              }
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                                preferences.emailUpdates
+                                  ? 'bg-primary-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                                  preferences.emailUpdates
+                                    ? 'translate-x-6'
+                                    : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+
+                          <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                            <div>
+                              <h4 className='font-medium text-gray-900 dark:text-white'>
+                                Security Alerts
+                              </h4>
+                              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                                Notifications about account security
+                              </p>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setPreferences({
+                                  ...preferences,
+                                  securityAlerts: !preferences.securityAlerts,
+                                })
+                              }
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                                preferences.securityAlerts
+                                  ? 'bg-primary-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                                  preferences.securityAlerts
+                                    ? 'translate-x-6'
+                                    : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -556,9 +434,7 @@ export const SettingsPage: React.FC = () => {
                         className='px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
                       >
                         <Save className='w-5 h-5' />
-                        <span>
-                          {isLoading ? 'Saving...' : 'Save Preferences'}
-                        </span>
+                        <span>{isLoading ? 'Saving...' : 'Save Preferences'}</span>
                       </motion.button>
                     </div>
                   </motion.div>
@@ -580,13 +456,13 @@ export const SettingsPage: React.FC = () => {
                       </h2>
                     </div>
 
-                    <div className='space-y-6'>
+                    <div className='space-y-8'>
                       {/* Change Password */}
-                      <div className='p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                      <div>
                         <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>
                           Change Password
                         </h3>
-                        <div className='space-y-4'>
+                        <form className='space-y-4'>
                           <div>
                             <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
                               Current Password
@@ -602,6 +478,7 @@ export const SettingsPage: React.FC = () => {
                                   })
                                 }
                                 className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                                placeholder='Enter current password'
                               />
                               <button
                                 type='button'
@@ -631,6 +508,7 @@ export const SettingsPage: React.FC = () => {
                                 })
                               }
                               className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                              placeholder='Enter new password'
                             />
                           </div>
 
@@ -649,12 +527,11 @@ export const SettingsPage: React.FC = () => {
                                   })
                                 }
                                 className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                                placeholder='Confirm new password'
                               />
                               <button
                                 type='button'
-                                onClick={() =>
-                                  setShowConfirmPassword(!showConfirmPassword)
-                                }
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                 className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                               >
                                 {showConfirmPassword ? (
@@ -667,31 +544,36 @@ export const SettingsPage: React.FC = () => {
                           </div>
 
                           <motion.button
+                            type='button'
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleChangePassword}
                             disabled={isLoading}
                             className='px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
                           >
-                            <Shield className='w-5 h-5' />
-                            <span>
-                              {isLoading ? 'Updating...' : 'Update Password'}
-                            </span>
+                            <Save className='w-5 h-5' />
+                            <span>{isLoading ? 'Updating...' : 'Update Password'}</span>
                           </motion.button>
-                        </div>
+                        </form>
                       </div>
 
                       {/* Two-Factor Authentication */}
-                      <div className='p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                      <div>
                         <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>
                           Two-Factor Authentication
                         </h3>
                         <p className='text-gray-600 dark:text-gray-400 mb-4'>
                           Add an extra layer of security to your account
                         </p>
-                        <button className='px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200'>
-                          Enable 2FA
-                        </button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => alert('2FA setup functionality not yet implemented')}
+                          className='px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
+                        >
+                          <Shield className='w-5 h-5' />
+                          <span>Enable 2FA</span>
+                        </motion.button>
                       </div>
                     </div>
                   </motion.div>
@@ -713,43 +595,41 @@ export const SettingsPage: React.FC = () => {
                       </h2>
                     </div>
 
-                    <div className='space-y-6'>
+                    <div className='space-y-8'>
                       {/* Export Data */}
-                      <div className='p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
-                        <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
+                      <div>
+                        <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>
                           Export Your Data
                         </h3>
                         <p className='text-gray-600 dark:text-gray-400 mb-4'>
-                          Download a copy of all your data including documents,
-                          settings, and preferences.
+                          Download a copy of all your data including documents, settings, and preferences.
                         </p>
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={handleExportData}
-                          className='px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
+                          className='px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
                         >
-                          <Download className='w-5 h-5' />
+                          <Database className='w-5 h-5' />
                           <span>Export Data</span>
                         </motion.button>
                       </div>
 
                       {/* Delete Account */}
-                      <div className='p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
-                        <h3 className='text-lg font-medium text-red-900 dark:text-red-300 mb-2'>
+                      <div>
+                        <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>
                           Delete Account
                         </h3>
-                        <p className='text-red-700 dark:text-red-400 mb-4'>
-                          Permanently delete your account and all associated
-                          data. This action cannot be undone.
+                        <p className='text-gray-600 dark:text-gray-400 mb-4'>
+                          Permanently delete your account and all associated data. This action cannot be undone.
                         </p>
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={handleDeleteAccount}
-                          className='px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
+                          className='px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
                         >
-                          <Trash2 className='w-5 h-5' />
+                          <Database className='w-5 h-5' />
                           <span>Delete Account</span>
                         </motion.button>
                       </div>
