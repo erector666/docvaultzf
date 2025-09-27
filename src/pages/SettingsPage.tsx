@@ -11,7 +11,10 @@ import {
   Moon,
   Sun,
   Monitor,
+  Lock,
+  User,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -21,13 +24,11 @@ export const SettingsPage: React.FC = () => {
   const { user, updateUserProfile } = useAuth();
   const { setLanguage, language } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('preferences');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [preferences, setPreferences] = useState({
     language: language,
     theme: theme,
@@ -35,12 +36,6 @@ export const SettingsPage: React.FC = () => {
     autoCategorization: user?.preferences?.autoCategorization ?? true,
     emailUpdates: true,
     securityAlerts: true,
-  });
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
   });
 
   const tabs = [
@@ -67,7 +62,7 @@ export const SettingsPage: React.FC = () => {
       // Update language and theme immediately
       setLanguage(preferences.language);
       setTheme(preferences.theme);
-      
+
       // Save to user profile
       await updateUserProfile({ preferences });
       showSuccessMessage();
@@ -78,63 +73,6 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match');
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      alert('Password must be at least 6 characters long');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Import Firebase Auth functions
-      const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
-      const { auth } = await import('../services/firebase');
-
-      if (!auth.currentUser) {
-        throw new Error('No user logged in');
-      }
-
-      // Re-authenticate user with current password
-      const credential = EmailAuthProvider.credential(
-        auth.currentUser.email!,
-        passwordData.currentPassword
-      );
-      
-      await reauthenticateWithCredential(auth.currentUser, credential);
-      
-      // Update password
-      await updatePassword(auth.currentUser, passwordData.newPassword);
-      
-      // Clear form
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      
-      alert('Password updated successfully!');
-    } catch (error: any) {
-      console.error('Error changing password:', error);
-      
-      // Handle specific Firebase Auth errors
-      if (error.code === 'auth/wrong-password') {
-        alert('Current password is incorrect');
-      } else if (error.code === 'auth/weak-password') {
-        alert('New password is too weak. Please choose a stronger password.');
-      } else if (error.code === 'auth/requires-recent-login') {
-        alert('Please log out and log back in before changing your password.');
-      } else {
-        alert(`Failed to change password: ${error.message}`);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const showSuccessMessage = () => {
     setShowSuccess(true);
@@ -146,14 +84,14 @@ export const SettingsPage: React.FC = () => {
     try {
       // Import required services
       const { documentService } = await import('../services/documentService');
-      
+
       if (!user) {
         throw new Error('No user logged in');
       }
 
       // Get user documents
       const documents = await documentService.getDocuments(user.uid);
-      
+
       // Prepare export data
       const exportData = {
         user: {
@@ -189,19 +127,19 @@ export const SettingsPage: React.FC = () => {
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
-      
+
       const link = document.createElement('a');
       link.href = url;
       link.download = `docvault-export-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Clean up the blob URL after a short delay to ensure download starts
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 100);
-      
+
       alert('Data exported successfully!');
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -215,13 +153,13 @@ export const SettingsPage: React.FC = () => {
     const confirmed = window.confirm(
       'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.'
     );
-    
+
     if (!confirmed) return;
 
     const doubleConfirmed = window.confirm(
       'This is your final warning. All your documents, settings, and account data will be permanently deleted. Are you absolutely sure?'
     );
-    
+
     if (!doubleConfirmed) return;
 
     setIsLoading(true);
@@ -230,7 +168,7 @@ export const SettingsPage: React.FC = () => {
       const { deleteUser } = await import('firebase/auth');
       const { auth } = await import('../services/firebase');
       const { documentService } = await import('../services/documentService');
-      
+
       if (!auth.currentUser) {
         throw new Error('No user logged in');
       }
@@ -238,7 +176,7 @@ export const SettingsPage: React.FC = () => {
       // Delete all user documents and storage files
       if (user) {
         const documents = await documentService.getDocuments(user.uid);
-        
+
         // Delete each document (this will also delete from storage)
         for (const doc of documents) {
           try {
@@ -251,17 +189,21 @@ export const SettingsPage: React.FC = () => {
 
       // Delete the user account
       await deleteUser(auth.currentUser);
-      
-      alert('Account deleted successfully. You will be redirected to the login page.');
-      
+
+      alert(
+        'Account deleted successfully. You will be redirected to the login page.'
+      );
+
       // Redirect to login page
       window.location.href = '/login';
     } catch (error: any) {
       console.error('Error deleting account:', error);
-      
+
       // Handle specific Firebase Auth errors
       if (error.code === 'auth/requires-recent-login') {
-        alert('For security reasons, please log out and log back in before deleting your account.');
+        alert(
+          'For security reasons, please log out and log back in before deleting your account.'
+        );
       } else {
         alert(`Failed to delete account: ${error.message}`);
       }
@@ -276,14 +218,14 @@ export const SettingsPage: React.FC = () => {
       // Import Firebase Auth functions
       const { multiFactor } = await import('firebase/auth');
       const { auth } = await import('../services/firebase');
-      
+
       if (!auth.currentUser) {
         throw new Error('No user logged in');
       }
 
       // Check if user already has 2FA enabled
       const multiFactorUser = multiFactor(auth.currentUser);
-      
+
       if (multiFactorUser.enrolledFactors.length > 0) {
         alert('Two-factor authentication is already enabled for your account.');
         return;
@@ -294,7 +236,7 @@ export const SettingsPage: React.FC = () => {
       // 1. Generate a QR code for authenticator apps
       // 2. Allow SMS phone number setup
       // 3. Handle the enrollment process
-      
+
       alert(`Two-Factor Authentication Setup:
 
 1. Download an authenticator app (Google Authenticator, Authy, etc.)
@@ -304,7 +246,7 @@ export const SettingsPage: React.FC = () => {
 Note: This is a placeholder implementation. Full 2FA setup would require additional Firebase configuration and UI components.
 
 Current status: 2FA is not yet configured for your account.`);
-      
+
       console.log('2FA setup requested - placeholder implementation');
     } catch (error) {
       console.error('Error setting up 2FA:', error);
@@ -612,7 +554,9 @@ Current status: 2FA is not yet configured for your account.`);
                         className='px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
                       >
                         <Save className='w-5 h-5' />
-                        <span>{isLoading ? 'Saving...' : 'Save Preferences'}</span>
+                        <span>
+                          {isLoading ? 'Saving...' : 'Save Preferences'}
+                        </span>
                       </motion.button>
                     </div>
                   </motion.div>
@@ -635,107 +579,26 @@ Current status: 2FA is not yet configured for your account.`);
                     </div>
 
                     <div className='space-y-8'>
-                      {/* Change Password */}
-                      <div>
-                        <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>
-                          Change Password
-                        </h3>
-                        <form className='space-y-4'>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                              Current Password
-                            </label>
-                            <div className='relative'>
-                              <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={passwordData.currentPassword}
-                                onChange={e =>
-                                  setPasswordData({
-                                    ...passwordData,
-                                    currentPassword: e.target.value,
-                                  })
-                                }
-                                className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                                placeholder='Enter current password'
-                                autoComplete='current-password'
-                              />
-                              <button
-                                type='button'
-                                onClick={() => setShowPassword(!showPassword)}
-                                className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                              >
-                                {showPassword ? (
-                                  <EyeOff className='w-5 h-5' />
-                                ) : (
-                                  <Eye className='w-5 h-5' />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                              New Password
-                            </label>
-                            <input
-                              type='password'
-                              value={passwordData.newPassword}
-                              onChange={e =>
-                                setPasswordData({
-                                  ...passwordData,
-                                  newPassword: e.target.value,
-                                })
-                              }
-                              className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                              placeholder='Enter new password'
-                              autoComplete='new-password'
-                            />
-                          </div>
-
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                              Confirm New Password
-                            </label>
-                            <div className='relative'>
-                              <input
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                value={passwordData.confirmPassword}
-                                onChange={e =>
-                                  setPasswordData({
-                                    ...passwordData,
-                                    confirmPassword: e.target.value,
-                                  })
-                                }
-                                className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                                placeholder='Confirm new password'
-                                autoComplete='new-password'
-                              />
-                              <button
-                                type='button'
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                              >
-                                {showConfirmPassword ? (
-                                  <EyeOff className='w-5 h-5' />
-                                ) : (
-                                  <Eye className='w-5 h-5' />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          <motion.button
-                            type='button'
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleChangePassword}
-                            disabled={isLoading}
-                            className='px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
-                          >
-                            <Save className='w-5 h-5' />
-                            <span>{isLoading ? 'Updating...' : 'Update Password'}</span>
-                          </motion.button>
-                        </form>
+                      {/* Password Management Notice */}
+                      <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6'>
+                        <div className='flex items-center space-x-3 mb-4'>
+                          <Lock className='w-6 h-6 text-blue-600 dark:text-blue-400' />
+                          <h3 className='text-lg font-medium text-blue-900 dark:text-blue-100'>
+                            Password Management
+                          </h3>
+                        </div>
+                        <p className='text-blue-800 dark:text-blue-200 mb-4'>
+                          Password changes are managed through your Profile page for better security and user experience.
+                        </p>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => navigate('/profile')}
+                          className='px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2'
+                        >
+                          <User className='w-4 h-4' />
+                          <span>Go to Profile Management</span>
+                        </motion.button>
                       </div>
 
                       {/* Two-Factor Authentication */}
@@ -783,7 +646,8 @@ Current status: 2FA is not yet configured for your account.`);
                           Export Your Data
                         </h3>
                         <p className='text-gray-600 dark:text-gray-400 mb-4'>
-                          Download a copy of all your data including documents, settings, and preferences.
+                          Download a copy of all your data including documents,
+                          settings, and preferences.
                         </p>
                         <motion.button
                           whileHover={{ scale: 1.02 }}
@@ -802,7 +666,8 @@ Current status: 2FA is not yet configured for your account.`);
                           Delete Account
                         </h3>
                         <p className='text-gray-600 dark:text-gray-400 mb-4'>
-                          Permanently delete your account and all associated data. This action cannot be undone.
+                          Permanently delete your account and all associated
+                          data. This action cannot be undone.
                         </p>
                         <motion.button
                           whileHover={{ scale: 1.02 }}

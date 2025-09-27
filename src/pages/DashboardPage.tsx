@@ -65,20 +65,24 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       if (!user?.uid) return;
-      
+
       try {
         setLoading(true);
         const docs = await documentService.getDocuments(user.uid);
         setDocuments(docs);
         setDocumentCount(docs.length);
-        
+
         // Calculate storage usage
         const totalSize = docs.reduce((sum, doc) => sum + (doc.size || 0), 0);
         setStorageUsage(totalSize);
-        
+
         // Get recent documents (last 5)
         const recent = docs
-          .sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.uploadDate).getTime() -
+              new Date(a.uploadDate).getTime()
+          )
           .slice(0, 5);
         setRecentDocuments(recent);
       } catch (error) {
@@ -166,6 +170,15 @@ export const DashboardPage: React.FC = () => {
       onClick: () => navigate('/profile'),
     },
   ];
+
+  const handleViewDocument = (document: any) => {
+    if (document.downloadURL) {
+      // Open document in new tab
+      window.open(document.downloadURL, '_blank');
+    } else {
+      alert('Document URL not available');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -324,8 +337,8 @@ export const DashboardPage: React.FC = () => {
                     Storage Usage Alert
                   </p>
                   <p className='text-sm text-yellow-700 dark:text-yellow-300'>
-                    You're using {(storageUsage / (1024 * 1024)).toFixed(1)} MB of storage. 
-                    Consider upgrading your plan for more space.
+                    You're using {(storageUsage / (1024 * 1024)).toFixed(1)} MB
+                    of storage. Consider upgrading your plan for more space.
                   </p>
                 </div>
               </div>
@@ -353,7 +366,9 @@ export const DashboardPage: React.FC = () => {
                 {loading ? (
                   <div className='text-center py-8'>
                     <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4'></div>
-                    <p className='text-gray-600 dark:text-gray-400'>Loading activity...</p>
+                    <p className='text-gray-600 dark:text-gray-400'>
+                      Loading activity...
+                    </p>
                   </div>
                 ) : recentDocuments.length > 0 ? (
                   <>
@@ -363,7 +378,8 @@ export const DashboardPage: React.FC = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className='flex items-center p-4 bg-white/40 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700/20 hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors duration-200'
+                        onClick={() => handleViewDocument(doc)}
+                        className='flex items-center p-4 bg-white/40 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700/20 hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors duration-200 cursor-pointer'
                       >
                         <div className='p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg'>
                           <FileText className='w-5 h-5 text-primary-600 dark:text-primary-400' />
@@ -373,7 +389,8 @@ export const DashboardPage: React.FC = () => {
                             {doc.name}
                           </p>
                           <p className='text-xs text-gray-600 dark:text-gray-400'>
-                            {doc.category} • {((doc.size || 0) / (1024 * 1024)).toFixed(1)} MB
+                            {doc.category} •{' '}
+                            {((doc.size || 0) / (1024 * 1024)).toFixed(1)} MB
                           </p>
                         </div>
                         <div className='ml-auto text-right'>
@@ -403,7 +420,8 @@ export const DashboardPage: React.FC = () => {
                       <FileText className='w-8 h-8 text-gray-400' />
                     </div>
                     <p className='text-gray-600 dark:text-gray-400 mb-4'>
-                      No documents yet. Upload your first document to get started!
+                      No documents yet. Upload your first document to get
+                      started!
                     </p>
                     <button
                       onClick={() => navigate('/upload')}
@@ -466,11 +484,13 @@ export const DashboardPage: React.FC = () => {
                       </div>
                       <div className='flex-1'>
                         <div className='flex items-center space-x-2'>
-                          <p className={`font-medium ${
-                            action.disabled
-                              ? 'text-gray-500 dark:text-gray-400'
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
+                          <p
+                            className={`font-medium ${
+                              action.disabled
+                                ? 'text-gray-500 dark:text-gray-400'
+                                : 'text-gray-900 dark:text-white'
+                            }`}
+                          >
                             {action.title}
                           </p>
                           {action.badge && (
@@ -479,11 +499,13 @@ export const DashboardPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <p className={`text-sm ${
-                          action.disabled
-                            ? 'text-gray-400 dark:text-gray-500'
-                            : 'text-gray-600 dark:text-gray-400'
-                        }`}>
+                        <p
+                          className={`text-sm ${
+                            action.disabled
+                              ? 'text-gray-400 dark:text-gray-500'
+                              : 'text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
                           {action.description}
                         </p>
                       </div>

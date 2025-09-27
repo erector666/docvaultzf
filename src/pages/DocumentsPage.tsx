@@ -72,12 +72,15 @@ export const DocumentsPage: React.FC = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       if (!user) return;
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       try {
-        const docs = await documentService.getDocuments(user.uid, selectedCategory);
+        const docs = await documentService.getDocuments(
+          user.uid,
+          selectedCategory
+        );
         setDocuments(docs);
       } catch (err) {
         console.error('Error loading documents:', err);
@@ -126,9 +129,13 @@ export const DocumentsPage: React.FC = () => {
 
   const filteredDocuments = documents.filter(doc => {
     if (searchQuery) {
-      return doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             doc.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-             doc.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return (
+        doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.tags.some(tag =>
+          tag.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        doc.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
     return true;
   });
@@ -146,11 +153,14 @@ export const DocumentsPage: React.FC = () => {
     }
   });
 
-  const categories = ['all', ...Array.from(new Set(documents.map(doc => doc.category)))];
-  
+  const categories = [
+    'all',
+    ...Array.from(new Set(documents.map(doc => doc.category))),
+  ];
+
   // const handleDeleteDocument = async (documentId: string) => {
   //   if (!user) return;
-  //   
+  //
   //   try {
   //     await documentService.deleteDocument(documentId, user.uid);
   //     setDocuments(prev => prev.filter(doc => doc.id !== documentId));
@@ -160,12 +170,39 @@ export const DocumentsPage: React.FC = () => {
   //   }
   // };
 
+  const handleViewDocument = (doc: Document) => {
+    if (doc.downloadURL) {
+      // Open document in new tab
+      window.open(doc.downloadURL, '_blank');
+    } else {
+      alert('Document URL not available');
+    }
+  };
+
+  const handleDownloadDocument = (doc: Document) => {
+    if (doc.downloadURL) {
+      // Create a temporary link to download the document
+      const link = document.createElement('a');
+      link.href = doc.downloadURL;
+      link.download = doc.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('Document URL not available');
+    }
+  };
+
   const handleToggleStar = async (documentId: string, isStarred: boolean) => {
     try {
-      await documentService.updateDocument(documentId, { isStarred: !isStarred });
-      setDocuments(prev => prev.map(doc => 
-        doc.id === documentId ? { ...doc, isStarred: !isStarred } : doc
-      ));
+      await documentService.updateDocument(documentId, {
+        isStarred: !isStarred,
+      });
+      setDocuments(prev =>
+        prev.map(doc =>
+          doc.id === documentId ? { ...doc, isStarred: !isStarred } : doc
+        )
+      );
     } catch (err) {
       console.error('Error updating document:', err);
       setError('Failed to update document');
@@ -272,7 +309,9 @@ export const DocumentsPage: React.FC = () => {
             className='mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800/20 rounded-xl flex items-center space-x-3'
           >
             <div className='w-5 h-5 text-red-600 dark:text-red-400'>⚠️</div>
-            <span className='text-red-800 dark:text-red-200 font-medium'>{error}</span>
+            <span className='text-red-800 dark:text-red-200 font-medium'>
+              {error}
+            </span>
             <button
               onClick={() => setError(null)}
               className='ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200'
@@ -297,7 +336,7 @@ export const DocumentsPage: React.FC = () => {
                   type='text'
                   placeholder='Search documents...'
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className='w-full pl-10 pr-4 py-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700/20 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500'
                 />
               </div>
@@ -306,7 +345,7 @@ export const DocumentsPage: React.FC = () => {
             <div className='flex items-center space-x-4'>
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={e => setSelectedCategory(e.target.value)}
                 className='px-4 py-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700/20 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500'
               >
                 {categories.map(category => (
@@ -318,7 +357,7 @@ export const DocumentsPage: React.FC = () => {
 
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={e => setSortBy(e.target.value as any)}
                 className='px-4 py-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700/20 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500'
               >
                 <option value='date'>Sort by Date</option>
@@ -388,10 +427,13 @@ export const DocumentsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className={viewMode === 'grid' 
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-              : 'space-y-4'
-            }>
+            <div
+              className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                  : 'space-y-4'
+              }
+            >
               {sortedDocuments.map((doc, index) => {
                 const Icon = getFileIcon(doc.type);
                 return (
@@ -400,6 +442,7 @@ export const DocumentsPage: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
+                    onClick={() => handleViewDocument(doc)}
                     className={`p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-gray-700/20 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group ${
                       viewMode === 'list' ? 'flex items-center space-x-4' : ''
                     }`}
@@ -414,7 +457,10 @@ export const DocumentsPage: React.FC = () => {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              onClick={() => handleToggleStar(doc.id, doc.isStarred)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStar(doc.id, doc.isStarred);
+                              }}
                               className={`p-1 rounded-lg transition-colors duration-200 ${
                                 doc.isStarred
                                   ? 'text-yellow-500'
@@ -426,9 +472,13 @@ export const DocumentsPage: React.FC = () => {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadDocument(doc);
+                              }}
                               className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors duration-200'
                             >
-                              <MoreVertical className='w-4 h-4' />
+                              <Download className='w-4 h-4' />
                             </motion.button>
                           </div>
                         </div>
@@ -475,14 +525,18 @@ export const DocumentsPage: React.FC = () => {
                             {doc.name}
                           </h3>
                           <p className='text-sm text-gray-600 dark:text-gray-400'>
-                            {doc.category} • {formatFileSize(doc.size)} • {doc.uploadDate.toLocaleDateString()}
+                            {doc.category} • {formatFileSize(doc.size)} •{' '}
+                            {doc.uploadDate.toLocaleDateString()}
                           </p>
                         </div>
                         <div className='flex items-center space-x-2'>
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => handleToggleStar(doc.id, doc.isStarred)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleStar(doc.id, doc.isStarred);
+                            }}
                             className={`p-2 rounded-lg transition-colors duration-200 ${
                               doc.isStarred
                                 ? 'text-yellow-500'
@@ -494,6 +548,10 @@ export const DocumentsPage: React.FC = () => {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDocument(doc);
+                            }}
                             className='p-2 text-gray-400 hover:text-blue-600 rounded-lg transition-colors duration-200'
                           >
                             <Eye className='w-4 h-4' />
@@ -501,6 +559,10 @@ export const DocumentsPage: React.FC = () => {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadDocument(doc);
+                            }}
                             className='p-2 text-gray-400 hover:text-green-600 rounded-lg transition-colors duration-200'
                           >
                             <Download className='w-4 h-4' />
