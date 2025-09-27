@@ -252,6 +252,7 @@ class DocumentService {
   }
 
   private getFileType(filename: string): string {
+    if (!filename) return 'unknown';
     const extension = filename.split('.').pop()?.toLowerCase();
     
     switch (extension) {

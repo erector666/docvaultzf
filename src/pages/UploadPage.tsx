@@ -95,6 +95,7 @@ export const UploadPage: React.FC = () => {
       status: 'pending' as const,
       size: file.size, // Explicitly set size to ensure it's preserved
       type: file.type, // Explicitly set type to ensure it's preserved
+      name: file.name, // Explicitly set name to ensure it's preserved
       preview: (file.type || '').startsWith('image/')
         ? URL.createObjectURL(file)
         : undefined,
