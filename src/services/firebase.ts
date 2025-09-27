@@ -8,7 +8,9 @@ import { getFunctions } from 'firebase/functions';
 
 // Debug environment variables
 console.log('Environment variables check:');
-console.log('API Key:', process.env.REACT_APP_FIREBASE_API_KEY ? 'Present' : 'Missing');
+console.log('Raw API Key from env:', process.env.REACT_APP_FIREBASE_API_KEY);
+console.log('API Key length:', process.env.REACT_APP_FIREBASE_API_KEY?.length);
+console.log('API Key first 10 chars:', process.env.REACT_APP_FIREBASE_API_KEY?.substring(0, 10));
 console.log('Project ID:', process.env.REACT_APP_FIREBASE_PROJECT_ID ? 'Present' : 'Missing');
 console.log('Auth Domain:', process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ? 'Present' : 'Missing');
 
