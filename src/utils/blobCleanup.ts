@@ -175,7 +175,7 @@ export const clearAllBlobUrls = () => {
     const originalConsoleError = console.error;
     console.error = (...args) => {
       const message = args.join(' ');
-      if (message.includes(`blob:${window.location.origin}`)) {
+      if (message.includes('blob:') && message.includes('ERR_FILE_NOT_FOUND')) {
         console.debug('Suppressed blob URL error:', message);
         return;
       }
@@ -185,9 +185,9 @@ export const clearAllBlobUrls = () => {
     // Restore original console.error after a delay
     setTimeout(() => {
       console.error = originalConsoleError;
-    }, 5000);
-    // Clear the specific problematic blob URL pattern
-    const problematicPattern = /blob:https:\/\/docvaultzf\.vercel\.app\/[a-f0-9-]+/g;
+    }, 10000);
+    // Clear the specific problematic blob URL pattern for Vercel domain
+    const problematicPattern = /blob:https:\/\/docvaultzf(?:-[a-z0-9]+)?\.vercel\.app\/[a-f0-9-]+/g;
     
     // Find and revoke all instances of this pattern
     const allElements = document.querySelectorAll('*');
@@ -286,6 +286,44 @@ export const clearAllBlobUrls = () => {
   } catch (error) {
     console.warn('Error during aggressive blob URL cleanup:', error);
   }
+};
+
+/**
+ * Global blob URL error suppression for production
+ * This should be called on app initialization
+ */
+export const suppressBlobUrlErrors = () => {
+  // Override global error handler to suppress blob URL errors
+  const originalErrorHandler = window.onerror;
+  window.onerror = (message, source, lineno, colno, error) => {
+    if (typeof message === 'string' && message.includes('blob:') && message.includes('ERR_FILE_NOT_FOUND')) {
+      console.debug('Suppressed blob URL error:', message);
+      return true; // Prevent default error handling
+    }
+    if (originalErrorHandler) {
+      return originalErrorHandler(message, source, lineno, colno, error);
+    }
+    return false;
+  };
+
+  // Override unhandled promise rejection handler
+  const originalUnhandledRejection = window.onunhandledrejection;
+  window.onunhandledrejection = (event) => {
+    if (event.reason && event.reason.toString().includes('blob:') && event.reason.toString().includes('ERR_FILE_NOT_FOUND')) {
+      console.debug('Suppressed blob URL promise rejection:', event.reason);
+      event.preventDefault();
+      return;
+    }
+    if (originalUnhandledRejection) {
+      return originalUnhandledRejection.call(window, event);
+    }
+  };
+
+  // Return cleanup function
+  return () => {
+    window.onerror = originalErrorHandler;
+    window.onunhandledrejection = originalUnhandledRejection;
+  };
 };
 
 /**

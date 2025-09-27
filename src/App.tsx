@@ -18,41 +18,23 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { cleanupStaleBlobUrls, clearAllBlobUrls } from './utils/blobCleanup';
+import { cleanupStaleBlobUrls, clearAllBlobUrls, suppressBlobUrlErrors } from './utils/blobCleanup';
 
 function App() {
   // Clean up any stale blob URLs on app initialization
   React.useEffect(() => {
-    // First, aggressively clear the specific problematic blob URL
+    // First, suppress blob URL errors globally
+    const errorSuppressionCleanup = suppressBlobUrlErrors();
+    
+    // Then aggressively clear the specific problematic blob URL
     clearAllBlobUrls();
     
-    // Then set up ongoing cleanup
+    // Finally set up ongoing cleanup
     const cleanup = cleanupStaleBlobUrls();
-    
-    // Add global error handler to suppress blob URL errors
-    const handleBlobUrlError = (event: ErrorEvent) => {
-      if (event.message && event.message.includes(`blob:${window.location.origin}`)) {
-        console.debug('Suppressed blob URL error:', event.message);
-        event.preventDefault();
-        return false;
-      }
-    };
-    
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason && event.reason.toString().includes(`blob:${window.location.origin}`)) {
-        console.debug('Suppressed blob URL promise rejection:', event.reason);
-        event.preventDefault();
-        return false;
-      }
-    };
-    
-    window.addEventListener('error', handleBlobUrlError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
     
     return () => {
       cleanup();
-      window.removeEventListener('error', handleBlobUrlError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      errorSuppressionCleanup();
     };
   }, []);
   return (
