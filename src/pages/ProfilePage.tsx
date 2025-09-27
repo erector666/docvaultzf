@@ -42,7 +42,7 @@ export const ProfilePage: React.FC = () => {
     joinDate: user?.createdAt || new Date(),
     lastLogin: user?.lastLoginAt || new Date(),
     profileImage: user?.photoURL || '',
-    isEmailVerified: true, // Mock value since we don't have this in our User type
+    isEmailVerified: false, // No email verification implemented yet
     twoFactorEnabled: false,
     notifications: {
       email: user?.preferences?.notifications || true,

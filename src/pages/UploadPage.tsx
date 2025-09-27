@@ -61,7 +61,7 @@ export const UploadPage: React.FC = () => {
   };
 
   const getFileIcon = (file: File) => {
-    const type = file.type;
+    const type = file.type || '';
     if (type.startsWith('image/')) return FileImage;
     if (type === 'application/pdf') return FileText; // Using FileText for PDF since FilePdf doesn't exist
     if (type.startsWith('video/')) return FileVideo;
@@ -93,7 +93,7 @@ export const UploadPage: React.FC = () => {
       id: generateFileId(),
       progress: 0,
       status: 'pending' as const,
-      preview: file.type.startsWith('image/')
+      preview: (file.type || '').startsWith('image/')
         ? URL.createObjectURL(file)
         : undefined,
     }));
