@@ -168,30 +168,25 @@ export const Header: React.FC = () => {
             {user && (
               <div className='flex items-center space-x-2'>
                 <div className='flex items-center space-x-2'>
-                  <div className='w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center'>
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className='w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors duration-200 cursor-pointer'
+                    title='Profile Management'
+                  >
                     {user.photoURL ? (
                       <img
                         src={user.photoURL}
                         alt={user.displayName || user.email}
-                        className='w-8 h-8 rounded-full'
+                        className='w-8 h-8 rounded-full object-cover'
                       />
                     ) : (
                       <User className='h-5 w-5 text-primary-600 dark:text-primary-400' />
                     )}
-                  </div>
+                  </button>
                   <span className='hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300'>
                     {user.displayName || user.email}
                   </span>
                 </div>
-
-                <button
-                  onClick={() => navigate('/profile')}
-                  className='p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-200 relative z-10'
-                  title='Profile'
-                  style={{ position: 'relative', zIndex: 10 }}
-                >
-                  <User className='h-5 w-5' />
-                </button>
 
                 <button
                   onClick={handleLogout}
