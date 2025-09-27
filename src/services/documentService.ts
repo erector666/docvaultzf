@@ -223,11 +223,23 @@ class DocumentService {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
+      'text/markdown',
+      'text/csv',
+      'application/json',
+      'application/xml',
+      'text/xml',
       'image/jpeg',
+      'image/jpg',
       'image/png',
       'image/gif',
       'image/webp',
+      'image/bmp',
+      'application/zip',
+      'application/x-rar-compressed',
+      'application/x-7z-compressed',
     ];
 
     if (file.size > maxSize) {
@@ -235,7 +247,7 @@ class DocumentService {
     }
 
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('File type not supported');
+      throw new Error(`File type "${file.type}" not supported. Supported types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, MD, CSV, JSON, XML, images (JPEG, PNG, GIF, WebP, BMP), and archives (ZIP, RAR, 7Z)`);
     }
   }
 

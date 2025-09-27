@@ -139,7 +139,7 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900'>
       {/* Animated Background Elements */}
-      <div className='absolute inset-0 overflow-hidden'>
+      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
@@ -479,6 +479,7 @@ export const SettingsPage: React.FC = () => {
                                 }
                                 className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
                                 placeholder='Enter current password'
+                                autoComplete='current-password'
                               />
                               <button
                                 type='button'
@@ -509,6 +510,7 @@ export const SettingsPage: React.FC = () => {
                               }
                               className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
                               placeholder='Enter new password'
+                              autoComplete='new-password'
                             />
                           </div>
 
@@ -528,6 +530,7 @@ export const SettingsPage: React.FC = () => {
                                 }
                                 className='w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
                                 placeholder='Confirm new password'
+                                autoComplete='new-password'
                               />
                               <button
                                 type='button'
