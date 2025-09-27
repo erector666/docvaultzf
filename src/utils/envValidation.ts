@@ -99,8 +99,10 @@ class EnvironmentValidator {
     }
 
     // Validate project ID format (skip validation for placeholder values)
-    if (projectId && !projectId.includes('your_') && !/^[a-z0-9-]+$/.test(projectId)) {
-      errors.push(`Firebase project ID "${projectId}" contains invalid characters. Must use only lowercase letters, numbers, and hyphens. Found: ${projectId}`);
+    // Sanitize project ID first to remove any control characters
+    const sanitizedProjectId = projectId ? projectId.replace(/[\r\n\t\f\v\0\s]/g, '').trim() : '';
+    if (sanitizedProjectId && !sanitizedProjectId.includes('your_') && !/^[a-z0-9-]+$/.test(sanitizedProjectId)) {
+      errors.push(`Firebase project ID "${sanitizedProjectId}" contains invalid characters. Must use only lowercase letters, numbers, and hyphens. Found: ${sanitizedProjectId}`);
     }
 
     // Validate auth domain format
