@@ -18,15 +18,25 @@ import {
   Zap,
   Sparkles,
   User,
+  Plus,
+  FolderOpen,
+  Star,
+  Calendar,
+  AlertCircle,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-// Removed unused language context import
+import { documentService } from '../services/documentService';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  // Removed unused language context
   const navigate = useNavigate();
   const [currentFeature, setCurrentFeature] = useState(0);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
+  const [storageUsage, setStorageUsage] = useState(0);
+  const [documentCount, setDocumentCount] = useState(0);
 
   const features = [
     {
@@ -51,11 +61,41 @@ export const DashboardPage: React.FC = () => {
     },
   ];
 
+  // Load documents data
+  useEffect(() => {
+    const loadDocuments = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        setLoading(true);
+        const docs = await documentService.getDocuments(user.uid);
+        setDocuments(docs);
+        setDocumentCount(docs.length);
+        
+        // Calculate storage usage
+        const totalSize = docs.reduce((sum, doc) => sum + (doc.size || 0), 0);
+        setStorageUsage(totalSize);
+        
+        // Get recent documents (last 5)
+        const recent = docs
+          .sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
+          .slice(0, 5);
+        setRecentDocuments(recent);
+      } catch (error) {
+        console.error('Error loading documents:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocuments();
+  }, [user?.uid]);
+
   const stats = [
     {
       icon: FileText,
       title: 'Total Documents',
-      value: user?.documentCount || 0,
+      value: documentCount,
       color: 'primary',
       bgColor: 'bg-primary-100 dark:bg-primary-900/30',
       iconColor: 'text-primary-600 dark:text-primary-400',
@@ -63,7 +103,7 @@ export const DashboardPage: React.FC = () => {
     {
       icon: CheckCircle,
       title: 'Processed',
-      value: Math.floor((user?.documentCount || 0) * 0.95), // 95% of total processed
+      value: Math.floor(documentCount * 0.95), // 95% of total processed
       color: 'green',
       bgColor: 'bg-green-100 dark:bg-green-900/30',
       iconColor: 'text-green-600 dark:text-green-400',
@@ -71,7 +111,7 @@ export const DashboardPage: React.FC = () => {
     {
       icon: Clock,
       title: 'Processing',
-      value: Math.floor((user?.documentCount || 0) * 0.05), // 5% currently processing
+      value: Math.floor(documentCount * 0.05), // 5% currently processing
       color: 'yellow',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
       iconColor: 'text-yellow-600 dark:text-yellow-400',
@@ -79,7 +119,7 @@ export const DashboardPage: React.FC = () => {
     {
       icon: HardDrive,
       title: 'Storage Used',
-      value: `${((user?.storageUsed || 0) / (1024 * 1024)).toFixed(1)} MB`,
+      value: `${(storageUsage / (1024 * 1024)).toFixed(1)} MB`,
       color: 'blue',
       bgColor: 'bg-blue-100 dark:bg-blue-900/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -93,6 +133,7 @@ export const DashboardPage: React.FC = () => {
       description: 'Add new documents to your vault',
       color: 'primary',
       onClick: () => navigate('/upload'),
+      badge: documentCount === 0 ? 'Start here' : undefined,
     },
     {
       icon: Search,
@@ -100,6 +141,7 @@ export const DashboardPage: React.FC = () => {
       description: 'Find documents with AI-powered search',
       color: 'purple',
       onClick: () => navigate('/search'),
+      disabled: documentCount === 0,
     },
     {
       icon: BarChart3,
@@ -107,6 +149,7 @@ export const DashboardPage: React.FC = () => {
       description: 'See insights about your documents',
       color: 'green',
       onClick: () => navigate('/analytics'),
+      disabled: documentCount === 0,
     },
     {
       icon: Settings,
@@ -265,6 +308,31 @@ export const DashboardPage: React.FC = () => {
           ))}
         </motion.div>
 
+        {/* Storage Warning */}
+        {storageUsage > 100 * 1024 * 1024 && ( // 100MB warning
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className='mb-8'
+          >
+            <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4'>
+              <div className='flex items-center'>
+                <AlertCircle className='w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-3' />
+                <div>
+                  <p className='text-sm font-medium text-yellow-800 dark:text-yellow-200'>
+                    Storage Usage Alert
+                  </p>
+                  <p className='text-sm text-yellow-700 dark:text-yellow-300'>
+                    You're using {(storageUsage / (1024 * 1024)).toFixed(1)} MB of storage. 
+                    Consider upgrading your plan for more space.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Main Content Grid */}
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
           {/* Recent Activity */}
@@ -282,32 +350,70 @@ export const DashboardPage: React.FC = () => {
                 <Activity className='w-6 h-6 text-primary-600 dark:text-primary-400' />
               </div>
               <div className='space-y-4'>
-                <div className='flex items-center p-4 bg-white/40 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700/20'>
-                  <div className='p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg'>
-                    <Sparkles className='w-5 h-5 text-primary-600 dark:text-primary-400' />
+                {loading ? (
+                  <div className='text-center py-8'>
+                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4'></div>
+                    <p className='text-gray-600 dark:text-gray-400'>Loading activity...</p>
                   </div>
-                  <div className='ml-4'>
-                    <p className='text-sm font-medium text-gray-900 dark:text-white'>
-                      Dashboard Ready
+                ) : recentDocuments.length > 0 ? (
+                  <>
+                    {recentDocuments.map((doc, index) => (
+                      <motion.div
+                        key={doc.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className='flex items-center p-4 bg-white/40 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700/20 hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors duration-200'
+                      >
+                        <div className='p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg'>
+                          <FileText className='w-5 h-5 text-primary-600 dark:text-primary-400' />
+                        </div>
+                        <div className='ml-4 flex-1'>
+                          <p className='text-sm font-medium text-gray-900 dark:text-white'>
+                            {doc.name}
+                          </p>
+                          <p className='text-xs text-gray-600 dark:text-gray-400'>
+                            {doc.category} • {((doc.size || 0) / (1024 * 1024)).toFixed(1)} MB
+                          </p>
+                        </div>
+                        <div className='ml-auto text-right'>
+                          <span className='text-xs text-gray-500 dark:text-gray-400'>
+                            {new Date(doc.uploadDate).toLocaleDateString()}
+                          </span>
+                          {doc.isStarred && (
+                            <Star className='w-4 h-4 text-yellow-500 ml-2' />
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                    {documentCount > 5 && (
+                      <div className='text-center pt-4'>
+                        <button
+                          onClick={() => navigate('/documents')}
+                          className='text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200'
+                        >
+                          View all {documentCount} documents →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className='text-center py-8'>
+                    <div className='p-4 bg-gray-100 dark:bg-gray-700/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center'>
+                      <FileText className='w-8 h-8 text-gray-400' />
+                    </div>
+                    <p className='text-gray-600 dark:text-gray-400 mb-4'>
+                      No documents yet. Upload your first document to get started!
                     </p>
-                    <p className='text-xs text-gray-600 dark:text-gray-400'>
-                      Your document management system is active and ready
-                    </p>
+                    <button
+                      onClick={() => navigate('/upload')}
+                      className='inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors duration-200'
+                    >
+                      <Plus className='w-4 h-4 mr-2' />
+                      Upload Document
+                    </button>
                   </div>
-                  <div className='ml-auto'>
-                    <span className='text-xs text-gray-500 dark:text-gray-400'>
-                      Just now
-                    </span>
-                  </div>
-                </div>
-                <div className='text-center py-8'>
-                  <div className='p-4 bg-gray-100 dark:bg-gray-700/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center'>
-                    <FileText className='w-8 h-8 text-gray-400' />
-                  </div>
-                  <p className='text-gray-600 dark:text-gray-400'>
-                    Upload your first document to see activity here
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -332,24 +438,52 @@ export const DashboardPage: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 * index }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={action.onClick}
-                    className='w-full p-4 bg-white/40 dark:bg-gray-800/40 hover:bg-white/60 dark:hover:bg-gray-800/60 rounded-lg border border-white/20 dark:border-gray-700/20 transition-all duration-200 text-left group'
+                    whileHover={{ scale: action.disabled ? 1 : 1.02 }}
+                    whileTap={{ scale: action.disabled ? 1 : 0.98 }}
+                    onClick={action.disabled ? undefined : action.onClick}
+                    disabled={action.disabled}
+                    className={`w-full p-4 rounded-lg border transition-all duration-200 text-left group relative ${
+                      action.disabled
+                        ? 'bg-gray-100 dark:bg-gray-800/20 border-gray-200 dark:border-gray-700/20 opacity-50 cursor-not-allowed'
+                        : 'bg-white/40 dark:bg-gray-800/40 hover:bg-white/60 dark:hover:bg-gray-800/60 border-white/20 dark:border-gray-700/20'
+                    }`}
                   >
                     <div className='flex items-center space-x-3'>
                       <div
-                        className={`p-2 bg-${action.color}-100 dark:bg-${action.color}-900/30 rounded-lg group-hover:scale-110 transition-transform duration-200`}
+                        className={`p-2 rounded-lg group-hover:scale-110 transition-transform duration-200 ${
+                          action.disabled
+                            ? 'bg-gray-200 dark:bg-gray-700/30'
+                            : `bg-${action.color}-100 dark:bg-${action.color}-900/30`
+                        }`}
                       >
                         <action.icon
-                          className={`w-5 h-5 text-${action.color}-600 dark:text-${action.color}-400`}
+                          className={`w-5 h-5 ${
+                            action.disabled
+                              ? 'text-gray-400 dark:text-gray-500'
+                              : `text-${action.color}-600 dark:text-${action.color}-400`
+                          }`}
                         />
                       </div>
                       <div className='flex-1'>
-                        <p className='font-medium text-gray-900 dark:text-white'>
-                          {action.title}
-                        </p>
-                        <p className='text-sm text-gray-600 dark:text-gray-400'>
+                        <div className='flex items-center space-x-2'>
+                          <p className={`font-medium ${
+                            action.disabled
+                              ? 'text-gray-500 dark:text-gray-400'
+                              : 'text-gray-900 dark:text-white'
+                          }`}>
+                            {action.title}
+                          </p>
+                          {action.badge && (
+                            <span className='px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full'>
+                              {action.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-sm ${
+                          action.disabled
+                            ? 'text-gray-400 dark:text-gray-500'
+                            : 'text-gray-600 dark:text-gray-400'
+                        }`}>
                           {action.description}
                         </p>
                       </div>
