@@ -1,6 +1,6 @@
 // App Configuration
 export const APP_CONFIG = {
-  name: 'AppVault',
+  name: 'DocVault',
   version: '1.0.0',
   description: 'AI-powered document management platform',
   maxFileSize: 10 * 1024 * 1024, // 10MB

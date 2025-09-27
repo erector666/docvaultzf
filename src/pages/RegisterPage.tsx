@@ -154,7 +154,7 @@ export const RegisterPage: React.FC = () => {
                 <Brain className='w-8 h-8 text-white' />
               </div>
               <h1 className='ml-4 text-3xl font-bold text-gray-900 dark:text-white'>
-                AppVault
+                DocVault
               </h1>
             </div>
 
@@ -464,7 +464,7 @@ export const RegisterPage: React.FC = () => {
               </div>
               <div className='flex items-center space-x-1'>
                 <Cpu className='w-4 h-4' />
-                <span>AI-Powered</span>
+                <span>Smart</span>
               </div>
               <div className='flex items-center space-x-1'>
                 <Eye className='w-4 h-4' />

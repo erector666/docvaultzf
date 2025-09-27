@@ -96,6 +96,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
+          
+          // Handle specific Firestore errors
+          if (error instanceof Error) {
+            if (error.message.includes('permission-denied')) {
+              console.error('Firestore permission denied - user may not have access');
+            } else if (error.message.includes('unavailable')) {
+              console.error('Firestore service unavailable - network or service issue');
+            } else if (error.message.includes('unauthenticated')) {
+              console.error('User not authenticated for Firestore access');
+            }
+          }
+          
+          // Set user to null but don't break the auth flow
           setUser(null);
         }
       } else {
@@ -227,6 +240,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setUser(prev => (prev ? { ...prev, ...updates } : null));
     } catch (error: any) {
+      console.error('Error updating user profile:', error);
+      
+      // Handle specific Firestore errors
+      if (error.code === 'permission-denied') {
+        throw new Error('You do not have permission to update this profile');
+      } else if (error.code === 'unavailable') {
+        throw new Error('Service temporarily unavailable. Please try again later.');
+      } else if (error.code === 'unauthenticated') {
+        throw new Error('Please log in again to update your profile');
+      }
+      
       throw new Error(error.message || 'Profile update failed');
     }
   };

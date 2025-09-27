@@ -80,10 +80,10 @@ export const Header: React.FC = () => {
           <div className='flex items-center'>
             <Link to='/dashboard' className='flex items-center space-x-2'>
               <div className='w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center'>
-                <span className='text-white font-bold text-sm'>AV</span>
+                <span className='text-white font-bold text-sm'>DV</span>
               </div>
               <span className='text-xl font-bold text-gray-900 dark:text-white'>
-                AppVault
+                DocVault
               </span>
             </Link>
           </div>

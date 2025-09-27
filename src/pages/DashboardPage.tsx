@@ -375,7 +375,7 @@ export const DashboardPage: React.FC = () => {
             </div>
             <div className='flex items-center space-x-2'>
               <Brain className='w-5 h-5 text-primary-500' />
-              <span>AI-Powered</span>
+              <span>Smart</span>
             </div>
             <div className='flex items-center space-x-2'>
               <Users className='w-5 h-5 text-blue-500' />

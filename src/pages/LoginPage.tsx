@@ -196,20 +196,20 @@ export const LoginPage: React.FC = () => {
                 <Brain className='w-8 h-8 text-white' />
               </div>
               <h1 className='ml-4 text-3xl font-bold text-gray-900 dark:text-white'>
-                AppVault
+                DocVault
               </h1>
             </div>
 
             <h2 className='text-4xl font-bold text-gray-900 dark:text-white mb-6'>
-              AI-Powered Document
+              Document Management
               <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-purple-600'>
                 {' '}
-                Intelligence
+                System
               </span>
             </h2>
 
             <p className='text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed'>
-              Streamline your document management with AI-powered tools.
+              Streamline your document management with powerful tools.
               Organize, search, and process your documents more efficiently with
               smart categorization and analysis.
             </p>
@@ -471,7 +471,7 @@ export const LoginPage: React.FC = () => {
               </div>
               <div className='flex items-center space-x-1'>
                 <Cpu className='w-4 h-4' />
-                <span>AI-Powered</span>
+                <span>Smart</span>
               </div>
               <div className='flex items-center space-x-1'>
                 <Eye className='w-4 h-4' />

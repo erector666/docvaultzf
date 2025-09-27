@@ -352,7 +352,7 @@ export const SearchPage: React.FC = () => {
               </motion.button>
               <div>
                 <h1 className='text-3xl font-bold text-gray-900 dark:text-white'>
-                  AI-Powered Search
+                  Smart Search
                 </h1>
                 <p className='text-lg text-gray-600 dark:text-gray-300'>
                   Find documents with intelligent search and filters

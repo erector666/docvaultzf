@@ -21,10 +21,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
   return (
-    <AppProviders>
-      <Router>
-        <div className='App'>
-          <Routes>
+    <ErrorBoundary>
+      <AppProviders>
+        <Router>
+          <div className='App'>
+            <Routes>
             {/* Public Routes */}
             <Route
               path='/login'
@@ -122,10 +123,11 @@ function App() {
             {/* Default redirect */}
             <Route path='/' element={<Navigate to='/dashboard' replace />} />
             <Route path='*' element={<Navigate to='/dashboard' replace />} />
-          </Routes>
-        </div>
-      </Router>
-    </AppProviders>
+            </Routes>
+          </div>
+        </Router>
+      </AppProviders>
+    </ErrorBoundary>
   );
 }
 

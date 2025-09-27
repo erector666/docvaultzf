@@ -73,12 +73,29 @@ class DocumentService {
       };
     } catch (error) {
       console.error('Error uploading document:', error);
+      
+      // Handle specific Firestore errors
+      let errorMessage = 'Upload failed';
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          errorMessage = 'You do not have permission to upload documents';
+        } else if (error.message.includes('unavailable')) {
+          errorMessage = 'Service temporarily unavailable. Please try again later.';
+        } else if (error.message.includes('unauthenticated')) {
+          errorMessage = 'Please log in to upload documents';
+        } else if (error.message.includes('quota-exceeded')) {
+          errorMessage = 'Storage quota exceeded. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       onProgress?.({ 
         progress: 0, 
         status: 'error', 
-        error: error instanceof Error ? error.message : 'Upload failed' 
+        error: errorMessage
       });
-      throw error;
+      throw new Error(errorMessage);
     }
   }
 
@@ -102,6 +119,18 @@ class DocumentService {
       })) as Document[];
     } catch (error) {
       console.error('Error fetching documents:', error);
+      
+      // Handle specific Firestore errors
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('You do not have permission to access documents');
+        } else if (error.message.includes('unavailable')) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        } else if (error.message.includes('unauthenticated')) {
+          throw new Error('Please log in to view documents');
+        }
+      }
+      
       throw error;
     }
   }
@@ -118,6 +147,18 @@ class DocumentService {
       // This requires storing the storage path in the document
     } catch (error) {
       console.error('Error deleting document:', error);
+      
+      // Handle specific Firestore errors
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('You do not have permission to delete this document');
+        } else if (error.message.includes('unavailable')) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        } else if (error.message.includes('unauthenticated')) {
+          throw new Error('Please log in to delete documents');
+        }
+      }
+      
       throw error;
     }
   }
@@ -131,6 +172,18 @@ class DocumentService {
       await updateDoc(docRef, updates);
     } catch (error) {
       console.error('Error updating document:', error);
+      
+      // Handle specific Firestore errors
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('You do not have permission to update this document');
+        } else if (error.message.includes('unavailable')) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        } else if (error.message.includes('unauthenticated')) {
+          throw new Error('Please log in to update documents');
+        }
+      }
+      
       throw error;
     }
   }
@@ -146,6 +199,18 @@ class DocumentService {
       );
     } catch (error) {
       console.error('Error searching documents:', error);
+      
+      // Handle specific Firestore errors
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('You do not have permission to search documents');
+        } else if (error.message.includes('unavailable')) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        } else if (error.message.includes('unauthenticated')) {
+          throw new Error('Please log in to search documents');
+        }
+      }
+      
       throw error;
     }
   }
